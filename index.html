@@ -1,0 +1,301 @@
+#!/bin/bash
+
+set -euo pipefail
+
+arch=$(uname -m)
+
+if [ "$(id -u)" -eq 0 ]; then
+    echo "This script is not meant to be run as root."
+    echo "It will create a home directory inside the rootfs for your current user, and if that user is root, this might not be what you want."
+    read -p "Are you sure you want to continue as root? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+if [ "$arch" != "riscv64" ]; then
+    echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
+    exit 1
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+    echo "Error: curl is not installed. Please install it and try again."
+    exit 1
+fi
+
+if ! command -v tar >/dev/null 2>&1; then
+    echo "Error: tar is not installed. Please install it and try again."
+    exit 1
+fi
+
+if ! command -v unzip >/dev/null 2>&1; then
+    echo "Error: unzip is not installed. Please install it and try again."
+    exit 1
+fi
+
+if ! command -v sudo >/dev/null 2>&1; then
+    echo "Error: sudo is not installed. Please install it and try again."
+    exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "Error: jq is not installed. Please install it and try again."
+    echo "On Ubuntu/Debian: sudo apt install jq"
+    echo "On Arch: sudo pacman -S jq"
+    echo "On Fedora: sudo dnf install jq"
+    echo "On openSUSE: sudo zypper install jq"
+    exit 1
+fi
+
+if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
+    echo "Error: \$HOME is not set or not a valid directory."
+    exit 1
+fi
+
+if [ -z "$USER" ]; then
+    echo "\$USER is not set"
+    exit 1
+fi
+
+INSTALLATION_DIR="/opt/felix86"
+FILE="$INSTALLATION_DIR/felix86"
+
+check_url() {
+  local url="$1"
+
+  if ! curl --output /dev/null --silent --head --fail "$url"; then
+    echo "URL is invalid or unreachable: $url"
+    exit 1
+  else
+    return 0
+  fi
+}
+
+select_release_url() {
+  local url_list
+  check_url "https://cdn.felix86.com/releases/meta.txt"
+  url_list=$(curl -s https://cdn.felix86.com/releases/meta.txt)
+
+  if [[ -z "$url_list" ]]; then
+    echo "Failed to fetch the releases list or it's empty."
+    return 1
+  fi
+
+  local total_lines
+  total_lines=$(echo "$url_list" | wc -l)
+  if (( total_lines > 5 )); then
+    echo "Failed to parse https://cdn.felix86.com/releases/meta.txt"
+    return 1
+  fi
+
+  local entries=()
+  while IFS= read -r line && [[ ${#entries[@]} -lt 5 ]]; do
+    entries+=("$line")
+  done <<< "$url_list"
+
+  if [[ ${#entries[@]} -eq 0 ]]; then
+    echo "No valid entries found."
+    return 1
+  fi
+
+  echo "┌───────────────────────────────────────┐"
+  echo "│   Welcome to the felix86 installer!   │"
+  echo "├───────────────────────────────────────┤"
+  echo "│                                       │"
+  echo "│  Please choose the version you'd      │"
+  echo "│  like to install                      │"
+  echo "│                                       │"
+  echo "└───────────────────────────────────────┘"
+  echo 
+
+  for i in "${!entries[@]}"; do
+    local version="${entries[$i]%% *}"
+    local display="felix86 $version"
+    local extra=""
+    if [[ $i -eq 0 ]]; then
+        extra="[Default]"
+    fi
+    printf " %d) %-17s %s\n" $((i+1)) "$display" "$extra"
+  done
+
+  local latest_index=$(( ${#entries[@]} + 1 ))
+  printf " %d) %-17s %s\n" $latest_index "Nightly version" "[Unstable]"
+
+  local choose_nightly_index=$(( ${#entries[@]} + 2 ))
+  printf " %d) %s\n" $choose_nightly_index "Choose specific build"
+  echo
+
+  local choice
+  while true; do
+    read -p "Choose a release (1-$choose_nightly_index) [default: 1]: " choice
+    choice=${choice:-1}
+    if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && (( choice >= 1 && choice <= choose_nightly_index )); then
+      break
+    else
+      echo "Invalid selection. Please choose a number between 1 and $choose_nightly_index."
+    fi
+  done
+
+  if (( choice == latest_index )); then
+    echo "Fetching latest artifact link..."
+    ver="latest"
+    nightly="https://nightly.link/OFFTKP/felix86/workflows/build/master"
+    FELIX86_LINK="$nightly/linux_artifact.zip"
+  elif (( choice == choose_nightly_index )); then
+    echo "Fetching latest artifacts..."
+    github_api_link="https://api.github.com/repos/OFFTKP/felix86/actions/artifacts?name=linux_artifact&per_page=100"
+    github_api_response=$(curl -s -L -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$github_api_link" | jq '.artifacts[] | select(.workflow_run.head_branch == "master")')
+    if [ -z "$github_api_response" ]; then
+      echo "No artifacts found on master branch"
+      exit 1
+    fi
+    artifacts_array=$(echo "$github_api_response" | jq -s '.')
+    artifacts_length=$(echo "$artifacts_array" | jq 'length')
+    echo "Available artifacts:"
+    echo "$artifacts_array" | jq -r 'to_entries[] | "\(.key + 1)) felix86 commit \(.value.workflow_run.head_sha[0:7]) from \(.value.created_at | strptime("%Y-%m-%dT%H:%M:%SZ") | strftime("%Y-%m-%d %H:%M"))"'
+    echo ""
+    read -p "Select artifact (1-$artifacts_length): " selection
+    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le "$artifacts_length" ]; then
+      selected_id=$(echo "$artifacts_array" | jq -r ".[$((selection-1))].workflow_run.id")
+      if [ -z "$selected_id" ]; then
+        echo "Failed to get artifact id?"
+        exit 1
+      fi
+      FELIX86_LINK=https://nightly.link/OFFTKP/felix86/actions/runs/$selected_id/linux_artifact.zip
+    else
+      echo "Invalid selection"
+      exit 1
+    fi
+  else
+    ver=${entries[$((choice-1))]}
+    selected="https://github.com/OFFTKP/felix86/releases/download/$ver/felix86.$ver.zip"
+    FELIX86_LINK="${selected#* }"
+  fi
+}
+
+select_release_url
+
+echo "Downloading felix86 from $FELIX86_LINK ..."
+mkdir -p /tmp/felix86_artifact
+curl -L "$FELIX86_LINK" -o /tmp/felix86_artifact/archive.zip
+echo "Unzipping..."
+unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
+rm /tmp/felix86_artifact/archive.zip
+echo "Moving felix86 executable to $FILE, requesting permission..."
+sudo mkdir -p $INSTALLATION_DIR
+
+# Save the old installation in /tmp/felix86_artifact/old.<random> in case the user wants it back
+TEMP_OLD=$(mktemp -d /tmp/felix86_artifact/old.XXXXXX)
+moved_old=0
+if [ -f "/usr/bin/felix86" ]; then
+    sudo mv /usr/bin/felix86 $TEMP_OLD/felix86.link
+    moved_old=1
+fi
+if [ -f "$FILE" ]; then
+    sudo mv $FILE $TEMP_OLD/
+    moved_old=1
+fi
+if [ -f "/usr/bin/felix86-mounter" ]; then
+    sudo mv /usr/bin/felix86-mounter $TEMP_OLD/felix86-mounter.link
+    moved_old=1
+fi
+if [ -f "$INSTALLATION_DIR/felix86-mounter" ]; then
+    sudo mv $INSTALLATION_DIR/felix86-mounter $TEMP_OLD/
+    moved_old=1
+fi
+if [ -d "$INSTALLATION_DIR/lib" ]; then
+    sudo mv $INSTALLATION_DIR/lib $TEMP_OLD/
+    moved_old=1
+fi
+
+if [[ "$moved_old" == "1" ]]; then
+    echo "Moved old felix86 installation to $TEMP_OLD"
+fi
+
+sudo mv /tmp/felix86_artifact/felix86 $FILE
+if [ -f "/tmp/felix86_artifact/felix86-mounter" ]; then
+    sudo mv /tmp/felix86_artifact/felix86-mounter $INSTALLATION_DIR/felix86-mounter
+    sudo chown root:root $INSTALLATION_DIR/felix86-mounter
+    sudo chmod u+s $INSTALLATION_DIR/felix86-mounter
+    sudo ln -s $INSTALLATION_DIR/felix86-mounter /usr/bin/felix86-mounter
+fi
+sudo mv /tmp/felix86_artifact/lib $INSTALLATION_DIR/
+sudo ln -s $FILE /usr/bin/felix86
+sudo chown 0:0 $FILE
+sudo chown -R 0:0 $INSTALLATION_DIR/lib
+echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR/lib"
+felix86 --set-thunks $INSTALLATION_DIR/lib
+
+current_rootfs=$(felix86 -g)
+INSTALL_ROOTFS=1
+if [[ -n "$current_rootfs" && -d "$current_rootfs" ]]; then
+  echo "Looks like you already have a rootfs at $current_rootfs"
+  read -p "Do you want to install a new rootfs anyway? (y/N) " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      INSTALL_ROOTFS=0
+  fi
+fi
+
+if [[ "$INSTALL_ROOTFS" == "1" ]]; then
+  bash <(curl -s https://install.felix86.com/rootfs.sh)
+fi
+
+NEW_ROOTFS=$(felix86 -g)
+
+# Finally register felix86 in binfmt_misc
+sudo --preserve-env=HOME felix86 --binfmt-misc
+
+echo "Running a test program..."
+
+# Let's try to run a test program
+set +e
+FELIX86_QUIET=1 felix86 "$NEW_ROOTFS/bin/bash" -c "exit 42"
+exit_code=$?
+
+# If everything went fine, felix86 should return 42
+if [ "$exit_code" -ne 42 ]; then
+    echo "felix86 failed to run a simple program -- may not have installed correctly?"
+    echo "Running again with logging enabled:"
+    felix86 "$NEW_ROOTFS/bin/bash" -c "exit 42"
+    exit 1
+fi
+
+echo "felix86 installed successfully"
+echo
+echo
+
+echo "┌───────────────────────────────────────┐"
+echo "│       felix86 is now installed!       │"
+echo "├───────────────────────────────────────┤"
+echo "│                                       │"
+echo "│ To enter an emulated bash, use:       │"
+echo "│                                       │"
+echo "│ felix86 --shell   (25.12 and later)   │"
+echo "│                                       │"
+echo "│   OR                                  │"
+echo "│                                       │"
+echo "│ felix86 /path/to/rootfs/bin/bash      │"
+echo "│                                       │"
+echo "├───────────────────────────────────────┤"
+echo "│                                       │"
+echo "│ Alternatively, run programs directly: │"
+echo "│                                       │"
+echo "│ /path/to/rootfs/MyGame.AppImage       │"
+echo "│                                       │"
+echo "└───────────────────────────────────────┘"
+
+if ! felix86 -d; then
+  echo "Failed binfmt_misc installation check"
+  echo "felix86 is currently not used as the default emulator for x86 applications"
+  echo "If you have other x86 emulators registered then you will need to unregister them"
+  echo "Example of unregistering an emulator: sudo sh -c \"echo -1 > /proc/sys/fs/binfmt_misc/qemu-x86_64\""
+  echo "To make this change permanent, make sure to remove the respective file from one of these directories:"
+  echo "  /etc/binfmt.d"
+  echo "  /run/binfmt.d"
+  echo "  /usr/local/lib/binfmt.d"
+  echo "  /usr/lib/binfmt.d"
+  echo "After you're done, to register felix86, run: sudo --preserve-env=HOME $FILE -b"
+  echo "If you don't register to binfmt_misc, some apps like sudo (needed by AppImages) will not work"
+fi
