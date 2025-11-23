@@ -4,10 +4,10 @@
 
 arch=$(uname -m)
 
-if [ "$arch" != "riscv64" ]; then
-    echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
-    exit 1
-fi
+# if [ "$arch" != "riscv64" ]; then
+#     echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
+#     exit 1
+# fi
 
 if ! command -v curl >/dev/null 2>&1; then
     echo "Error: curl is not installed. Please install it and try again."
@@ -55,10 +55,10 @@ check_url() {
 
 select_release_url() {
   local url_list
-  echo "Checking if https://felix86.com/releases.txt is live..."
-  check_url "https://felix86.com/releases.txt"
+  echo "Checking if https://install.felix86.com/releases.txt is live..."
+  check_url "https://install.felix86.com/releases.txt"
   echo "Downloading release list..."
-  url_list=$(curl -k -s https://felix86.com/releases.txt)
+  url_list=$(curl -k -s https://install.felix86.com/releases.txt)
   echo "Downloaded"
 
   if [[ -z "$url_list" ]]; then
@@ -69,13 +69,13 @@ select_release_url() {
   local total_lines
   total_lines=$(echo "$url_list" | wc -l)
   if (( total_lines > 5 )); then
-    echo "Failed to parse https://felix86.com/releases.txt"
+    echo "Failed to parse https://install.felix86.com/releases.txt"
     return 1
   fi
 
   local entries=()
   while IFS= read -r line && [[ ${#entries[@]} -lt 5 ]]; do
-    [[ "$line" =~ ^[0-9]+\.[0-9]+[[:space:]]+https?://.*$ ]] && entries+=("$line")
+    entries+=("$line")
   done <<< "$url_list"
 
   if [[ ${#entries[@]} -eq 0 ]]; then
@@ -117,9 +117,11 @@ select_release_url() {
 
   if (( choice == latest_index )); then
     echo "Fetching latest artifact link..."
-    FELIX86_LINK=$(curl -k -s "https://felix86.com/latest.txt")
+    ver="latest"
+    FELIX86_LINK="https://nightly.link/OFFTKP/felix86/workflows/build/master/linux_artifact.zip"
   else
-    selected="${entries[$((choice-1))]}"
+    ver=${entries[$((choice-1))]}
+    selected="https://github.com/OFFTKP/felix86/releases/download/$ver/felix86.$ver.zip"
     FELIX86_LINK="${selected#* }"
   fi
 }
@@ -130,13 +132,13 @@ echo "Welcome to the felix86 installer"
 
 select_release_url
 
-echo "Downloading latest felix86 artifact..."
+echo "Downloading felix86 $ver from $FELIX86_LINK ..."
 mkdir -p /tmp/felix86_artifact
 curl -k -L $FELIX86_LINK -o /tmp/felix86_artifact/archive.zip
 unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
 echo "Downloaded"
-echo "Moving felix86 artifact to $FILE, requesting permission..."
+echo "Moving felix86 executable to $FILE, requesting permission..."
 sudo mkdir -p $INSTALLATION_DIR
 
 # Save the old installation in /tmp/felix86_artifact/old.<random> in case the user wants it back
