@@ -103,14 +103,15 @@ select_release_url() {
   for i in "${!entries[@]}"; do
     local version="${entries[$i]%% *}"
     local display="felix86 $version"
+    local extra=""
     if [[ $i -eq 0 ]]; then
-        display="$display (Default)"
+        extra="[Default]"
     fi
-    printf " %d) %s\n" $((i+1)) "$display"
+    printf " %d) %-17s %s\n" $((i+1)) "$display" "$extra"
   done
 
   local latest_index=$(( ${#entries[@]} + 1 ))
-  echo " $latest_index) Nightly version (Unstable)"
+  printf " %d) %-17s %s\n" $latest_index "Nightly version" "[Unstable]"
   echo
 
   local choice
@@ -212,9 +213,9 @@ for name in "${names[@]}"; do
     recommended=$(jq -r --arg n "$name" '.[$n].recommended' <<< "$json")
 
     if [[ "$recommended" == "true" ]]; then
-        echo " $i) $name    [Size: $size] [Recommended]"
+        printf " %d) %-25s %s\n" $i "$name" "[Size: $size] [Recommended]"
     else
-        echo " $i) $name    [Size: $size]"
+        printf " %d) %-25s %s\n" $i "$name" "[Size: $size]"
     fi
     ((i++))
 done
