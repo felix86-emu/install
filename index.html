@@ -98,6 +98,7 @@ select_release_url() {
   echo "│  like to install                      │"
   echo "│                                       │"
   echo "└───────────────────────────────────────┘"
+  echo 
 
   for i in "${!entries[@]}"; do
     local version="${entries[$i]%% *}"
@@ -110,10 +111,11 @@ select_release_url() {
 
   local latest_index=$(( ${#entries[@]} + 1 ))
   echo " $latest_index) Nightly version (Unstable)"
+  echo
 
   local choice
   while true; do
-    read -p "Select a release (1-$latest_index) [default: 1]: " choice
+    read -p "Choose a release (1-$latest_index) [default: 1]: " choice
     choice=${choice:-1}
     if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && (( choice >= 1 && choice <= latest_index )); then
       break
@@ -194,7 +196,14 @@ json=$(curl -k -s https://cdn.felix86.com/rootfs/meta.json)
 mapfile -t names < <(jq -r 'keys[]' <<< "$json")
 default_index=$(jq -r 'to_entries | map(.value.recommended) | index(true)' <<< "$json")
 
-echo "Choose a rootfs to install:"
+echo "┌───────────────────────────────────────┐"
+echo "│   Rootfs installer                    │"
+echo "├───────────────────────────────────────┤"
+echo "│                                       │"
+echo "│  Please choose the rootfs you'd       │"
+echo "│  like to install                      │"
+echo "│                                       │"
+echo "└───────────────────────────────────────┘"
 echo
 
 i=1
@@ -203,9 +212,9 @@ for name in "${names[@]}"; do
     recommended=$(jq -r --arg n "$name" '.[$n].recommended' <<< "$json")
 
     if [[ "$recommended" == "true" ]]; then
-        echo " $i) $name — $size [Recommended]"
+        echo " $i) $name    [Size: $size] [Recommended]"
     else
-        echo " $i) $name — $size"
+        echo " $i) $name    [Size: $size]"
     fi
     ((i++))
 done
