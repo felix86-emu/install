@@ -1,13 +1,11 @@
 #!/bin/bash
 
-### Important: If you update this script, make sure to also update https://felix86.com/install.sh
-
 arch=$(uname -m)
 
-# if [ "$arch" != "riscv64" ]; then
-#     echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
-#     exit 1
-# fi
+if [ "$arch" != "riscv64" ]; then
+    echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
+    exit 1
+fi
 
 if ! command -v curl >/dev/null 2>&1; then
     echo "Error: curl is not installed. Please install it and try again."
@@ -26,6 +24,15 @@ fi
 
 if ! command -v sudo >/dev/null 2>&1; then
     echo "Error: sudo is not installed. Please install it and try again."
+    exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "Error: jq is not installed. Please install it and try again."
+    echo "On Ubuntu/Debian: sudo apt install jq"
+    echo "On Arch: sudo pacman -S jq"
+    echo "On Fedora: sudo dnf install jq"
+    echo "On openSUSE: sudo zypper install jq"
     exit 1
 fi
 
@@ -55,10 +62,10 @@ check_url() {
 
 select_release_url() {
   local url_list
-  echo "Checking if https://install.felix86.com/releases.txt is live..."
-  check_url "https://install.felix86.com/releases.txt"
+  echo "Checking if https://cdn.felix86.com/releases/meta.txt is live..."
+  check_url "https://cdn.felix86.com/releases/meta.txt"
   echo "Downloading release list..."
-  url_list=$(curl -k -s https://install.felix86.com/releases.txt)
+  url_list=$(curl -k -s https://cdn.felix86.com/releases/meta.txt)
   echo "Downloaded"
 
   if [[ -z "$url_list" ]]; then
@@ -69,7 +76,7 @@ select_release_url() {
   local total_lines
   total_lines=$(echo "$url_list" | wc -l)
   if (( total_lines > 5 )); then
-    echo "Failed to parse https://install.felix86.com/releases.txt"
+    echo "Failed to parse https://cdn.felix86.com/releases/meta.txt"
     return 1
   fi
 
@@ -118,7 +125,8 @@ select_release_url() {
   if (( choice == latest_index )); then
     echo "Fetching latest artifact link..."
     ver="latest"
-    FELIX86_LINK="https://nightly.link/OFFTKP/felix86/workflows/build/master/linux_artifact.zip"
+    nightly="https://nightly.link/OFFTKP/felix86/workflows/build/master"
+    FELIX86_LINK="$nightly/linux_artifact.zip"
   else
     ver=${entries[$((choice-1))]}
     selected="https://github.com/OFFTKP/felix86/releases/download/$ver/felix86.$ver.zip"
@@ -180,54 +188,75 @@ echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR
 felix86 --set-thunks $INSTALLATION_DIR/lib
 
 echo ""
-echo "Which rootfs would you like to download?"
-echo "1) Ubuntu 24.04 (Default)"
-echo "2) I already have a rootfs"
+echo "Downloading rootfs list..."
+check_url "https://cdn.felix86.com/rootfs/meta.json"
+json=$(curl -k -s https://cdn.felix86.com/rootfs/meta.json)
+mapfile -t names < <(jq -r 'keys[]' <<< "$json")
+default_index=$(jq -r 'to_entries | map(.value.recommended) | index(true)' <<< "$json")
 
-while true; do
-    read -p "Your choice [default: 1]: " choice
-    choice=${choice:-1}
-    if [[ "$choice" == "1" || "$choice" == "2" ]]; then
-        break
+echo "Choose a rootfs to install:"
+echo
+
+i=1
+for name in "${names[@]}"; do
+    size=$(jq -r --arg n "$name" '.[$n].size' <<< "$json")
+    recommended=$(jq -r --arg n "$name" '.[$n].recommended' <<< "$json")
+
+    if [[ "$recommended" == "true" ]]; then
+        echo " $i) $name — $size [Recommended]"
     else
-        echo "Invalid input. Please enter 1 or 2."
+        echo " $i) $name — $size"
     fi
+    ((i++))
 done
 
+echo " $i) Enter custom path"
+custom_index=$i
+echo
 
-if [ "$choice" -eq 1 ]; then
-    read -p "Installation path for rootfs [default: $INSTALLATION_DIR/rootfs]: " NEW_ROOTFS
-    DEFAULT_ROOTFS=$INSTALLATION_DIR/rootfs
-    NEW_ROOTFS=${NEW_ROOTFS:-$DEFAULT_ROOTFS}
-    NEW_ROOTFS=$(eval echo "$NEW_ROOTFS")
-    if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
-        echo "Downloading rootfs download link from felix86.com/rootfs/ubuntu.txt..."
-        check_url "https://felix86.com/rootfs/ubuntu.txt"
-        UBUNTU_2404_LINK=$(curl -k -s https://felix86.com/rootfs/ubuntu.txt)
-        echo "Installing rootfs to $NEW_ROOTFS"
-        echo "Creating rootfs directory..."
-        sudo mkdir -p $NEW_ROOTFS
-        echo "Downloading Ubuntu 24.04 rootfs..."
-        check_url "$UBUNTU_2404_LINK"
+while true; do
+    read -p "Choose an option (default: ${names[default_index]}): " choice
 
-        # Important we untar with --same-owner so that sudo/mount/fusermount keep their setuid bits
-        curl -k -L $UBUNTU_2404_LINK | sudo tar --same-owner -xz -C $NEW_ROOTFS
-        echo "Changing permissions for $NEW_ROOTFS to $USER"
-
-        # Chown the directory so we can add stuff inside, but not recursively as to not ruin setuid stuff
-        sudo chown "$USER":"$USER" "$NEW_ROOTFS"
-        echo "Rootfs was downloaded and extracted in $NEW_ROOTFS"
-        felix86 --set-rootfs $NEW_ROOTFS
-    else
-        echo "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"
-        exit 1
+    if [[ -z "$choice" ]]; then
+        choice=$default_index
     fi
-elif [ "$choice" -eq 2 ]; then
-    echo "You selected to use your own rootfs."
-    echo "Please specify the absolute path to your rootfs"
-    read -p "Path: " line
-    felix86 --set-rootfs $line
-fi
+
+    if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice < custom_index )); then
+        selected="${names[choice-1]}"
+        selected_url=$(jq -r --arg n "$selected" '.[$n].url' <<< "$json")
+        read -p "Installation path for $selected [default: $INSTALLATION_DIR/rootfs]: " NEW_ROOTFS
+        DEFAULT_ROOTFS=$INSTALLATION_DIR/rootfs
+        NEW_ROOTFS=${NEW_ROOTFS:-$DEFAULT_ROOTFS}
+        NEW_ROOTFS=$(eval echo "$NEW_ROOTFS")
+        if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
+          echo "Checking if $selected_url is live..."
+          check_url $selected_url
+          echo "Installing rootfs to $NEW_ROOTFS"
+          echo "Creating rootfs directory..."
+          sudo mkdir -p $NEW_ROOTFS
+          echo "Downloading $selected..."
+          curl -k -L $selected_url | sudo tar --same-owner -xz -C $NEW_ROOTFS
+          echo "Changing permissions for $NEW_ROOTFS to $USER"
+          sudo chown "$USER":"$USER" "$NEW_ROOTFS"
+          echo "$selected was downloaded and extracted in $NEW_ROOTFS"
+          felix86 --set-rootfs $NEW_ROOTFS
+        else
+          echo "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"
+          exit 1
+        fi
+        break
+    else
+        echo "Invalid choice, try again."
+    fi
+
+    if [[ "$choice" == "$custom_index" ]]; then
+        echo "You selected to use your own rootfs."
+        echo "Please specify the absolute path to your rootfs"
+        read -p "Path: " line
+        felix86 --set-rootfs $line
+        break
+    fi
+done
 
 # Finally register felix86 in binfmt_misc
 sudo -E felix86 --binfmt-misc
