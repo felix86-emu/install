@@ -105,11 +105,11 @@ select_release_url() {
     if [[ $i -eq 0 ]]; then
         display="$display (Default)"
     fi
-    printf "%d) %s\n" $((i+1)) "$display"
+    printf " %d) %s\n" $((i+1)) "$display"
   done
 
   local latest_index=$(( ${#entries[@]} + 1 ))
-  echo "$latest_index) Nightly version (Unstable)"
+  echo " $latest_index) Nightly version (Unstable)"
 
   local choice
   while true; do
@@ -143,9 +143,9 @@ select_release_url
 echo "Downloading felix86 $ver from $FELIX86_LINK ..."
 mkdir -p /tmp/felix86_artifact
 curl -k -L $FELIX86_LINK -o /tmp/felix86_artifact/archive.zip
+echo "Unzipping..."
 unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
-echo "Downloaded"
 echo "Moving felix86 executable to $FILE, requesting permission..."
 sudo mkdir -p $INSTALLATION_DIR
 
@@ -221,6 +221,14 @@ while true; do
         choice=$default_index
     fi
 
+    if [[ "$choice" == "$custom_index" ]]; then
+        echo "You selected to use your own rootfs."
+        echo "Please specify the absolute path to your rootfs"
+        read -p "Path: " line
+        felix86 --set-rootfs $line
+        break
+    fi
+
     if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice < custom_index )); then
         selected="${names[choice-1]}"
         selected_url=$(jq -r --arg n "$selected" '.[$n].url' <<< "$json")
@@ -248,18 +256,12 @@ while true; do
     else
         echo "Invalid choice, try again."
     fi
-
-    if [[ "$choice" == "$custom_index" ]]; then
-        echo "You selected to use your own rootfs."
-        echo "Please specify the absolute path to your rootfs"
-        read -p "Path: " line
-        felix86 --set-rootfs $line
-        break
-    fi
 done
 
 # Finally register felix86 in binfmt_misc
 sudo -E felix86 --binfmt-misc
+
+echo "Running a test program..."
 
 # Let's try to run a test program
 set +e
