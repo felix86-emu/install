@@ -181,12 +181,14 @@ if [[ "$moved_old" == "1" ]]; then
 fi
 
 sudo mv /tmp/felix86_artifact/felix86 $FILE
-sudo mv /tmp/felix86_artifact/felix86-mounter $INSTALLATION_DIR/felix86-mounter
-sudo chown root:root $INSTALLATION_DIR/felix86-mounter
-sudo chmod u+s $INSTALLATION_DIR/felix86-mounter
+if [ -f "/tmp/felix86_artifact/felix86-mounter" ]; then
+    sudo mv /tmp/felix86_artifact/felix86-mounter $INSTALLATION_DIR/felix86-mounter
+    sudo chown root:root $INSTALLATION_DIR/felix86-mounter
+    sudo chmod u+s $INSTALLATION_DIR/felix86-mounter
+    sudo ln -s $INSTALLATION_DIR/felix86-mounter /usr/bin/felix86-mounter
+fi
 sudo mv /tmp/felix86_artifact/lib $INSTALLATION_DIR/
 sudo ln -s $FILE /usr/bin/felix86
-sudo ln -s $INSTALLATION_DIR/felix86-mounter /usr/bin/felix86-mounter
 echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR/lib"
 felix86 --set-thunks $INSTALLATION_DIR/lib
 
@@ -236,6 +238,7 @@ while true; do
         echo "Please specify the absolute path to your rootfs"
         read -p "Path: " line
         felix86 --set-rootfs $line
+        NEW_ROOTFS=$line
         break
     fi
 
@@ -275,14 +278,14 @@ echo "Running a test program..."
 
 # Let's try to run a test program
 set +e
-FELIX86_QUIET=1 felix86 /bin/bash -c "exit 42"
+FELIX86_QUIET=1 felix86 $NEW_ROOTFS/bin/bash -c "exit 42"
 exit_code=$?
 
 # If everything went fine, felix86 should return 42
 if [ "$exit_code" -ne 42 ]; then
     echo "felix86 failed to run a simple program -- may not have installed correctly?"
     echo "Running again with logging enabled:"
-    felix86 /bin/bash -c "exit 42"
+    felix86 $NEW_ROOTFS/bin/bash -c "exit 42"
     exit 1
 fi
 
@@ -296,11 +299,11 @@ echo "├───────────────────────�
 echo "│                                       │"
 echo "│ To enter an emulated bash, use:       │"
 echo "│                                       │"
-echo "│ felix86 /bin/bash                     │"
+echo "│ felix86 --shell   (25.12 and later)   │"
 echo "│                                       │"
 echo "│   OR                                  │"
 echo "│                                       │"
-echo "│ /path/to/rootfs/bin/bash              │"
+echo "│ felix86 /path/to/rootfs/bin/bash      │"
 echo "│                                       │"
 echo "├───────────────────────────────────────┤"
 echo "│                                       │"
