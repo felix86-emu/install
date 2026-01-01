@@ -65,7 +65,7 @@ copy_and_notify() {
   local dst="$2"
 
   echo "Copying $1 to $2"
-  sudo cp -p $1 $2
+  sudo cp -rp $1 $2
 }
 
 select_release_url() {
@@ -204,7 +204,7 @@ echo ""
 echo "Downloading rootfs list..."
 check_url "https://cdn.felix86.com/rootfs/meta.json"
 json=$(curl -k -s https://cdn.felix86.com/rootfs/meta.json)
-mapfile -t names < <(jq -r 'keys[]' <<< "$json")
+mapfile -t names < <(jq -r 'to_entries[].key' <<< "$json")
 default_index=$(jq -r 'to_entries | map(.value.recommended) | index(true)' <<< "$json")
 
 echo "┌───────────────────────────────────────┐"
