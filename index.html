@@ -269,6 +269,8 @@ while true; do
           sudo chown "$USER":"$USER" "$NEW_ROOTFS"
           echo "$selected was downloaded and extracted in $NEW_ROOTFS"
           echo "Copying important files to rootfs..."
+          mkdir -p "$NEW_ROOTFS/var/lib"
+          mkdir -p "$NEW_ROOTFS/etc"
           copy_and_notify "/var/lib/dbus" "$NEW_ROOTFS/var/lib/dbus"
           copy_and_notify "/etc/mtab" "$NEW_ROOTFS/etc/mtab"
           copy_and_notify "/etc/passwd" "$NEW_ROOTFS/etc/passwd"
