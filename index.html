@@ -60,6 +60,15 @@ check_url() {
   fi
 }
 
+copy_and_notify() {
+  local src="$1"
+  local dst="$2"
+
+  echo "Copying $1 to $2"
+  sudo cp -p $1 $2
+  echo "Copied"
+}
+
 select_release_url() {
   local url_list
   echo "Checking if https://cdn.felix86.com/releases/meta.txt is live..."
@@ -260,6 +269,27 @@ while true; do
           echo "Changing permissions for $NEW_ROOTFS to $USER"
           sudo chown "$USER":"$USER" "$NEW_ROOTFS"
           echo "$selected was downloaded and extracted in $NEW_ROOTFS"
+          echo "Copying important files to rootfs..."
+          copy_and_notify "/var/lib/dbus" "$NEW_ROOTFS/var/lib/dbus"
+          copy_and_notify "/etc/mtab" "$NEW_ROOTFS/etc/mtab"
+          copy_and_notify "/etc/passwd" "$NEW_ROOTFS/etc/passwd"
+          copy_and_notify "/etc/passwd-" "$NEW_ROOTFS/etc/passwd-"
+          copy_and_notify "/etc/group" "$NEW_ROOTFS/etc/group"
+          copy_and_notify "/etc/group-" "$NEW_ROOTFS/etc/group-"
+          copy_and_notify "/etc/shadow" "$NEW_ROOTFS/etc/shadow"
+          copy_and_notify "/etc/shadow-" "$NEW_ROOTFS/etc/shadow-"
+          copy_and_notify "/etc/gshadow" "$NEW_ROOTFS/etc/gshadow"
+          copy_and_notify "/etc/gshadow-" "$NEW_ROOTFS/etc/gshadow-"
+          copy_and_notify "/etc/hosts" "$NEW_ROOTFS/etc/hosts"
+          copy_and_notify "/etc/hostname" "$NEW_ROOTFS/etc/hostname"
+          copy_and_notify "/etc/timezone" "$NEW_ROOTFS/etc/timezone"
+          copy_and_notify "/etc/localtime" "$NEW_ROOTFS/etc/localtime"
+          copy_and_notify "/etc/fstab" "$NEW_ROOTFS/etc/fstab"
+          copy_and_notify "/etc/subuid" "$NEW_ROOTFS/etc/subuid"
+          copy_and_notify "/etc/subgid" "$NEW_ROOTFS/etc/subgid"
+          copy_and_notify "/etc/machine-id" "$NEW_ROOTFS/etc/machine-id"
+          copy_and_notify "/etc/resolv.conf" "$NEW_ROOTFS/etc/resolv.conf"
+          echo "Done!"
           felix86 --set-rootfs $NEW_ROOTFS
         else
           echo "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"
