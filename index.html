@@ -271,7 +271,6 @@ while true; do
           echo "Copying important files to rootfs..."
           mkdir -p "$NEW_ROOTFS/var/lib"
           mkdir -p "$NEW_ROOTFS/etc"
-          copy_and_notify "/var/lib/dbus" "$NEW_ROOTFS/var/lib/dbus"
           copy_and_notify "/etc/mtab" "$NEW_ROOTFS/etc/mtab"
           copy_and_notify "/etc/passwd" "$NEW_ROOTFS/etc/passwd"
           copy_and_notify "/etc/passwd-" "$NEW_ROOTFS/etc/passwd-"
@@ -290,6 +289,7 @@ while true; do
           copy_and_notify "/etc/subgid" "$NEW_ROOTFS/etc/subgid"
           copy_and_notify "/etc/machine-id" "$NEW_ROOTFS/etc/machine-id"
           copy_and_notify "/etc/resolv.conf" "$NEW_ROOTFS/etc/resolv.conf"
+          copy_and_notify "/etc/sudoers" "$NEW_ROOTFS/etc/sudoers"
           echo "Done!"
           felix86 --set-rootfs $NEW_ROOTFS
         else
