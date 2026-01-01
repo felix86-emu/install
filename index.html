@@ -238,7 +238,7 @@ while true; do
     read -p "Choose an option (default: ${names[default_index]}): " choice
 
     if [[ -z "$choice" ]]; then
-        choice=$default_index
+        choice=$(($default_index+1))
     fi
 
     if [[ "$choice" == "$custom_index" ]]; then
