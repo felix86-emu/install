@@ -312,7 +312,7 @@ while true; do
 done
 
 # Finally register felix86 in binfmt_misc
-sudo -E felix86 --binfmt-misc
+sudo --preserve-env=HOME felix86 --binfmt-misc
 
 echo "Running a test program..."
 
@@ -363,6 +363,6 @@ if ! felix86 -d; then
   echo "  /run/binfmt.d"
   echo "  /usr/local/lib/binfmt.d"
   echo "  /usr/lib/binfmt.d"
-  echo "After you're done, to register felix86, run: sudo -E $FILE -b"
+  echo "After you're done, to register felix86, run: sudo --preserve-env=HOME $FILE -b"
   echo "If you don't register to binfmt_misc, some apps like sudo (needed by AppImages) will not work"
 fi
