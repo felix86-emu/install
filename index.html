@@ -64,9 +64,18 @@ copy_and_notify() {
   local src="$1"
   local dst="$2"
 
-  echo "Copying $1 to $2"
-  sudo cp -rp $1 $2
+  if [[ ! -e "$src" ]]; then
+    echo "$src doesn't exist, skipping..."
+    return
+  fi
+
+  echo "Copying $src to $dst"
+  if ! sudo cp -rp "$src" "$dst"; then
+    echo "Error: failed to copy '$src' to '$dst'" >&2
+    exit 1
+  fi
 }
+
 
 select_release_url() {
   local url_list
