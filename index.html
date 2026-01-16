@@ -274,8 +274,12 @@ while true; do
           sudo mkdir -p $NEW_ROOTFS
           echo "Downloading $selected..."
           curl -k -L $selected_url | sudo tar --same-owner -xz -C $NEW_ROOTFS
-          echo "Changing permissions for $NEW_ROOTFS to $USER"
-          sudo chown "$USER":"$USER" "$NEW_ROOTFS"
+          sudo chown 0:0 "$NEW_ROOTFS"
+          sudo mkdir "$NEW_ROOTFS/home"
+          CURRENT_USER=$(whoami)
+          echo "Creating home directory for $CURRENT_USER..." 
+          sudo mkdir "$NEW_ROOTFS/home/$CURRENT_USER"
+          sudo chown $CURRENT_USER:$CURRENT_USER "$NEW_ROOTFS/home/$CURRENT_USER"
           echo "$selected was downloaded and extracted in $NEW_ROOTFS"
           echo "Copying important files to rootfs..."
           mkdir -p "$NEW_ROOTFS/var/lib"
