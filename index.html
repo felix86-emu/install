@@ -2,6 +2,16 @@
 
 arch=$(uname -m)
 
+if [ "$(id -u)" -eq 0 ]; then
+    echo "This script is not meant to be run as root."
+    echo "It will create a home directory inside the rootfs for your current user, and if that user is root, this might not be what you want."
+    read -p "Are you sure you want to continue as root? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
 if [ "$arch" != "riscv64" ]; then
     echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
     exit 1
