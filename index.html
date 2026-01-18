@@ -139,16 +139,19 @@ select_release_url() {
 
   local latest_index=$(( ${#entries[@]} + 1 ))
   printf " %d) %-17s %s\n" $latest_index "Nightly version" "[Unstable]"
+
+  local choose_nightly_index=$(( ${#entries[@]} + 2 ))
+  printf " %d) %s\n" $choose_nightly_index "Choose specific build by hash"
   echo
 
   local choice
   while true; do
-    read -p "Choose a release (1-$latest_index) [default: 1]: " choice
+    read -p "Choose a release (1-$choose_nightly_index) [default: 1]: " choice
     choice=${choice:-1}
-    if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && (( choice >= 1 && choice <= latest_index )); then
+    if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && (( choice >= 1 && choice <= choose_nightly_index )); then
       break
     else
-      echo "Invalid selection. Please choose a number between 1 and $latest_index."
+      echo "Invalid selection. Please choose a number between 1 and $choose_nightly_index."
     fi
   done
 
@@ -157,6 +160,31 @@ select_release_url() {
     ver="latest"
     nightly="https://nightly.link/OFFTKP/felix86/workflows/build/master"
     FELIX86_LINK="$nightly/linux_artifact.zip"
+  elif (( choice == choose_nightly_index )); then
+    echo "Fetching latest artifacts..."
+    github_api_link="https://api.github.com/repos/OFFTKP/felix86/actions/artifacts?name=linux_artifact&per_page=100"
+    github_api_response=$(curl -s -L -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" $github_api_link | jq '.artifacts[] | select(.workflow_run.head_branch == "master")')
+    if [ -z "$github_api_response" ]; then
+      echo "No artifacts found on master branch"
+      exit 1
+    fi
+    artifacts_array=$(echo "$github_api_response" | jq -s '.')
+    artifacts_length=$(echo "$artifacts_array" | jq 'length')
+    echo "Available artifacts:"
+    echo "$artifacts_array" | jq -r 'to_entries[] | "\(.key + 1)) felix86 commit \(.value.workflow_run.head_sha[0:7]) from \(.value.created_at | strptime("%Y-%m-%dT%H:%M:%SZ") | strftime("%Y-%m-%d %H:%M"))"'
+    echo ""
+    read -p "Select artifact (1-$artifacts_length): " selection
+    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le "$artifacts_length" ]; then
+      selected_id=$(echo "$artifacts_array" | jq -r ".[$((selection-1))].workflow_run.id")
+      if [ -z "$selected_id" ]; then
+        echo "Failed to get artifact id?"
+        exit 1
+      fi
+      FELIX86_LINK=https://nightly.link/OFFTKP/felix86/actions/runs/$selected_id/linux_artifact.zip
+    else
+      echo "Invalid selection"
+      exit 1
+    fi
   else
     ver=${entries[$((choice-1))]}
     selected="https://github.com/OFFTKP/felix86/releases/download/$ver/felix86.$ver.zip"
