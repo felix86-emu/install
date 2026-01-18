@@ -89,11 +89,8 @@ copy_and_notify() {
 
 select_release_url() {
   local url_list
-  echo "Checking if https://cdn.felix86.com/releases/meta.txt is live..."
   check_url "https://cdn.felix86.com/releases/meta.txt"
-  echo "Downloading release list..."
   url_list=$(curl -k -s https://cdn.felix86.com/releases/meta.txt)
-  echo "Downloaded"
 
   if [[ -z "$url_list" ]]; then
     echo "Failed to fetch the releases list or it's empty."
