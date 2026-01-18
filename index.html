@@ -252,11 +252,12 @@ felix86 --set-thunks $INSTALLATION_DIR/lib
 current_rootfs=$(felix86 -g)
 INSTALL_ROOTFS=1
 if [[ -n "$current_rootfs" && -d "$current_rootfs" ]]; then
-  printf "Looks like you already have a rootfs at %s" "$current_rootfs"
+  echo "Looks like you already have a rootfs at $current_rootfs"
   read -p "Do you want to install a new rootfs anyway? (y/N) " -n 1 -r
   echo
   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
       INSTALL_ROOTFS=0
+      NEW_ROOTFS=$current_rootfs
   fi
 fi
 
