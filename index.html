@@ -160,7 +160,7 @@ select_release_url() {
   elif (( choice == choose_nightly_index )); then
     echo "Fetching latest artifacts..."
     github_api_link="https://api.github.com/repos/OFFTKP/felix86/actions/artifacts?name=linux_artifact&per_page=100"
-    github_api_response=$(curl -s -L -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" $github_api_link | jq '.artifacts[] | select(.workflow_run.head_branch == "master")')
+    github_api_response=$(curl -s -L -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$github_api_link" | jq '.artifacts[] | select(.workflow_run.head_branch == "master")')
     if [ -z "$github_api_response" ]; then
       echo "No artifacts found on master branch"
       exit 1
@@ -195,7 +195,7 @@ select_release_url
 
 echo "Downloading felix86 $ver from $FELIX86_LINK ..."
 mkdir -p /tmp/felix86_artifact
-curl -k -L $FELIX86_LINK -o /tmp/felix86_artifact/archive.zip
+curl -k -L "$FELIX86_LINK" -o /tmp/felix86_artifact/archive.zip
 echo "Unzipping..."
 unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
@@ -302,8 +302,8 @@ if [[ "$INSTALL_ROOTFS" == "1" ]]; then
           echo "You selected to use your own rootfs."
           echo "Please specify the absolute path to your rootfs"
           read -p "Path: " line
-          felix86 --set-rootfs $line
-          NEW_ROOTFS=$line
+          felix86 --set-rootfs "$line"
+          NEW_ROOTFS="$line"
           break
       fi
 
@@ -319,9 +319,9 @@ if [[ "$INSTALL_ROOTFS" == "1" ]]; then
             check_url $selected_url
             echo "Installing rootfs to $NEW_ROOTFS"
             echo "Creating rootfs directory..."
-            sudo mkdir -p $NEW_ROOTFS
+            sudo mkdir -p "$NEW_ROOTFS"
             echo "Downloading $selected..."
-            curl -k -L $selected_url | sudo tar --same-owner -xz -C $NEW_ROOTFS
+            curl -k -L $selected_url | sudo tar --same-owner -xz -C "$NEW_ROOTFS"
             sudo chown 0:0 "$NEW_ROOTFS"
             sudo mkdir "$NEW_ROOTFS/home"
             CURRENT_USER=$(whoami)
@@ -362,7 +362,7 @@ if [[ "$INSTALL_ROOTFS" == "1" ]]; then
             copy_and_notify "/etc/resolv.conf" "$NEW_ROOTFS/etc/resolv.conf"
             copy_and_notify "/etc/sudoers" "$NEW_ROOTFS/etc/sudoers"
             echo "Done!"
-            felix86 --set-rootfs $NEW_ROOTFS
+            felix86 --set-rootfs "$NEW_ROOTFS"
           else
             echo "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"
             exit 1
@@ -382,14 +382,14 @@ echo "Running a test program..."
 
 # Let's try to run a test program
 set +e
-FELIX86_QUIET=1 felix86 $NEW_ROOTFS/bin/bash -c "exit 42"
+FELIX86_QUIET=1 felix86 "$NEW_ROOTFS/bin/bash" -c "exit 42"
 exit_code=$?
 
 # If everything went fine, felix86 should return 42
 if [ "$exit_code" -ne 42 ]; then
     echo "felix86 failed to run a simple program -- may not have installed correctly?"
     echo "Running again with logging enabled:"
-    felix86 $NEW_ROOTFS/bin/bash -c "exit 42"
+    felix86 "$NEW_ROOTFS/bin/bash" -c "exit 42"
     exit 1
 fi
 
