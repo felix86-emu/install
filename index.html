@@ -303,6 +303,7 @@ if [[ "$INSTALL_ROOTFS" == "1" ]]; then
           echo "Please specify the absolute path to your rootfs"
           read -p "Path: " line
           felix86 --set-rootfs "$line"
+          echo "Please make sure to properly copy relevant files in your rootfs, if you haven't already. See https://felix86.com/docs/devs/building-instructions/#important-files for more info" 
           NEW_ROOTFS="$line"
           break
       fi
@@ -320,6 +321,15 @@ if [[ "$INSTALL_ROOTFS" == "1" ]]; then
             echo "Installing rootfs to $NEW_ROOTFS"
             echo "Creating rootfs directory..."
             sudo mkdir -p "$NEW_ROOTFS"
+            if ! sudo -u nobody test -r "$NEW_ROOTFS"; then
+              echo -e "\033[33mWarning: Different users cannot access this rootfs path. This may lead into problems with programs that try to switch to a different user.\033[0m"
+              echo "It is not recommended you install the rootfs in paths not accessible by all users, such as the home directory."
+              read -p "Are you sure you want to install the rootfs at $NEW_ROOTFS? (y/N) " -n 1 -r
+              echo
+              if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                  exit 1
+              fi
+            fi
             echo "Downloading $selected..."
             curl -k -L $selected_url | sudo tar --same-owner -xz -C "$NEW_ROOTFS"
             sudo chown 0:0 "$NEW_ROOTFS"
