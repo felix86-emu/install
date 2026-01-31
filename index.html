@@ -62,7 +62,7 @@ FILE="$INSTALLATION_DIR/felix86"
 check_url() {
   local url="$1"
 
-  if ! curl -k --output /dev/null --silent --head --fail "$url"; then
+  if ! curl --output /dev/null --silent --head --fail "$url"; then
     echo "URL is invalid or unreachable: $url"
     exit 1
   else
@@ -90,7 +90,7 @@ copy_and_notify() {
 select_release_url() {
   local url_list
   check_url "https://cdn.felix86.com/releases/meta.txt"
-  url_list=$(curl -k -s https://cdn.felix86.com/releases/meta.txt)
+  url_list=$(curl -s https://cdn.felix86.com/releases/meta.txt)
 
   if [[ -z "$url_list" ]]; then
     echo "Failed to fetch the releases list or it's empty."
@@ -195,7 +195,7 @@ select_release_url
 
 echo "Downloading felix86 $ver from $FELIX86_LINK ..."
 mkdir -p /tmp/felix86_artifact
-curl -k -L "$FELIX86_LINK" -o /tmp/felix86_artifact/archive.zip
+curl -L "$FELIX86_LINK" -o /tmp/felix86_artifact/archive.zip
 echo "Unzipping..."
 unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
@@ -260,7 +260,7 @@ if [[ "$INSTALL_ROOTFS" == "1" ]]; then
   echo ""
   echo "Downloading rootfs list..."
   check_url "https://cdn.felix86.com/rootfs/meta.json"
-  json=$(curl -k -s https://cdn.felix86.com/rootfs/meta.json)
+  json=$(curl -s https://cdn.felix86.com/rootfs/meta.json)
   mapfile -t names < <(jq -r 'to_entries[].key' <<< "$json")
   default_index=$(jq -r 'to_entries | map(.value.recommended) | index(true)' <<< "$json")
 
@@ -331,7 +331,7 @@ if [[ "$INSTALL_ROOTFS" == "1" ]]; then
               fi
             fi
             echo "Downloading $selected..."
-            curl -k -L $selected_url | sudo tar --same-owner -xz -C "$NEW_ROOTFS"
+            curl -L $selected_url | sudo tar --same-owner -xz -C "$NEW_ROOTFS"
             sudo chown 0:0 "$NEW_ROOTFS"
             sudo mkdir "$NEW_ROOTFS/home"
             CURRENT_USER=$(whoami)
