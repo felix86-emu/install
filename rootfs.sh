@@ -3,6 +3,33 @@
 
 arch=$(uname -m)
 
+check_url() {
+  local url="$1"
+
+  if ! curl --output /dev/null --silent --head --fail "$url"; then
+    echo "URL is invalid or unreachable: $url"
+    exit 1
+  else
+    return 0
+  fi
+}
+
+copy_and_notify() {
+  local src="$1"
+  local dst="$2"
+
+  if [[ ! -e "$src" ]]; then
+    echo "$src doesn't exist, skipping..."
+    return
+  fi
+
+  echo "Copying $src to $dst"
+  if ! sudo cp -rp "$src" "$dst"; then
+    echo "Error: failed to copy '$src' to '$dst'" >&2
+    exit 1
+  fi
+}
+
 if [ "$(id -u)" -eq 0 ]; then
     echo "This script is not meant to be run as root."
     echo "It will create a home directory inside the rootfs for your current user, and if that user is root, this might not be what you want."
