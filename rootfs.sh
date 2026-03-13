@@ -3,6 +3,8 @@
 
 set -e
 
+INSTALLATION_DIR="/opt/felix86"
+
 arch=$(uname -m)
 
 check_url() {
@@ -142,67 +144,72 @@ while true; do
         DEFAULT_ROOTFS=$INSTALLATION_DIR/rootfs
         NEW_ROOTFS=${NEW_ROOTFS:-$DEFAULT_ROOTFS}
         NEW_ROOTFS=$(eval echo "$NEW_ROOTFS")
-        if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
-        echo "Checking if $selected_url is live..."
-        check_url $selected_url
-        echo "Installing rootfs to $NEW_ROOTFS"
-        echo "Creating rootfs directory..."
-        sudo mkdir -p "$NEW_ROOTFS"
-        if ! sudo -u nobody test -r "$NEW_ROOTFS"; then
-            echo -e "\033[33mWarning: Different users cannot access this rootfs path. This may lead into problems with programs that try to switch to a different user.\033[0m"
-            echo "It is not recommended you install the rootfs in paths not accessible by all users, such as the home directory."
-            read -p "Are you sure you want to install the rootfs at $NEW_ROOTFS? (y/N) " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                exit 1
-            fi
+        NEW_ROOTFS=$(realpath "$NEW_ROOTFS")
+        if [[ -z "$NEW_ROOTFS" || "$NEW_ROOTFS" == "/" ]]; then
+            echo "Error: Rootfs is empty or set to host root" >&2
+            exit 1
         fi
-        echo "Downloading $selected..."
-        curl -L $selected_url | sudo tar --same-owner -xz -C "$NEW_ROOTFS"
-        sudo chown 0:0 "$NEW_ROOTFS"
-        sudo mkdir "$NEW_ROOTFS/home"
-        CURRENT_USER=$(whoami)
-        echo "Creating home directory for $CURRENT_USER..." 
-        sudo mkdir "$NEW_ROOTFS/home/$CURRENT_USER"
-        sudo chown $CURRENT_USER:$CURRENT_USER "$NEW_ROOTFS/home/$CURRENT_USER"
-        echo "Creating /dev..."
-        sudo mkdir -p "$NEW_ROOTFS/dev"
-        echo "Creating /proc..."
-        sudo mkdir -p "$NEW_ROOTFS/proc"
-        echo "Creating /sys..."
-        sudo mkdir -p "$NEW_ROOTFS/sys"
-        echo "Creating /run..."
-        sudo mkdir -p "$NEW_ROOTFS/run"
-        echo "Creating /tmp..."
-        sudo mkdir -p "$NEW_ROOTFS/tmp"
-        echo "$selected was downloaded and extracted in $NEW_ROOTFS"
-        echo "Copying important files to rootfs..."
-        mkdir -p "$NEW_ROOTFS/var/lib"
-        mkdir -p "$NEW_ROOTFS/etc"
-        copy_and_notify "/etc/mtab" "$NEW_ROOTFS/etc/mtab"
-        copy_and_notify "/etc/passwd" "$NEW_ROOTFS/etc/passwd"
-        copy_and_notify "/etc/passwd-" "$NEW_ROOTFS/etc/passwd-"
-        copy_and_notify "/etc/group" "$NEW_ROOTFS/etc/group"
-        copy_and_notify "/etc/group-" "$NEW_ROOTFS/etc/group-"
-        copy_and_notify "/etc/shadow" "$NEW_ROOTFS/etc/shadow"
-        copy_and_notify "/etc/shadow-" "$NEW_ROOTFS/etc/shadow-"
-        copy_and_notify "/etc/gshadow" "$NEW_ROOTFS/etc/gshadow"
-        copy_and_notify "/etc/gshadow-" "$NEW_ROOTFS/etc/gshadow-"
-        copy_and_notify "/etc/hosts" "$NEW_ROOTFS/etc/hosts"
-        copy_and_notify "/etc/hostname" "$NEW_ROOTFS/etc/hostname"
-        copy_and_notify "/etc/timezone" "$NEW_ROOTFS/etc/timezone"
-        copy_and_notify "/etc/localtime" "$NEW_ROOTFS/etc/localtime"
-        copy_and_notify "/etc/fstab" "$NEW_ROOTFS/etc/fstab"
-        copy_and_notify "/etc/subuid" "$NEW_ROOTFS/etc/subuid"
-        copy_and_notify "/etc/subgid" "$NEW_ROOTFS/etc/subgid"
-        copy_and_notify "/etc/machine-id" "$NEW_ROOTFS/etc/machine-id"
-        copy_and_notify "/etc/resolv.conf" "$NEW_ROOTFS/etc/resolv.conf"
-        copy_and_notify "/etc/sudoers" "$NEW_ROOTFS/etc/sudoers"
-        echo "Done!"
-        felix86 --set-rootfs "$NEW_ROOTFS"
+        if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
+            echo "Checking if $selected_url is live..."
+            check_url $selected_url
+            echo "Installing rootfs to $NEW_ROOTFS"
+            echo "Creating rootfs directory..."
+            sudo mkdir -p "$NEW_ROOTFS"
+            if ! sudo -u nobody test -r "$NEW_ROOTFS"; then
+                echo -e "\033[33mWarning: Different users cannot access this rootfs path. This may lead into problems with programs that try to switch to a different user.\033[0m"
+                echo "It is not recommended you install the rootfs in paths not accessible by all users, such as the home directory."
+                read -p "Are you sure you want to install the rootfs at $NEW_ROOTFS? (y/N) " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    exit 1
+                fi
+            fi
+            echo "Downloading $selected..."
+            curl -L $selected_url | sudo tar --same-owner -xz -C "$NEW_ROOTFS"
+            sudo chown 0:0 "$NEW_ROOTFS"
+            sudo mkdir "$NEW_ROOTFS/home"
+            CURRENT_USER=$(whoami)
+            echo "Creating home directory for $CURRENT_USER..." 
+            sudo mkdir "$NEW_ROOTFS/home/$CURRENT_USER"
+            sudo chown $CURRENT_USER:$CURRENT_USER "$NEW_ROOTFS/home/$CURRENT_USER"
+            echo "Creating /dev..."
+            sudo mkdir -p "$NEW_ROOTFS/dev"
+            echo "Creating /proc..."
+            sudo mkdir -p "$NEW_ROOTFS/proc"
+            echo "Creating /sys..."
+            sudo mkdir -p "$NEW_ROOTFS/sys"
+            echo "Creating /run..."
+            sudo mkdir -p "$NEW_ROOTFS/run"
+            echo "Creating /tmp..."
+            sudo mkdir -p "$NEW_ROOTFS/tmp"
+            echo "$selected was downloaded and extracted in $NEW_ROOTFS"
+            echo "Copying important files to rootfs..."
+            mkdir -p "$NEW_ROOTFS/var/lib"
+            mkdir -p "$NEW_ROOTFS/etc"
+            copy_and_notify "/etc/mtab" "$NEW_ROOTFS/etc/mtab"
+            copy_and_notify "/etc/passwd" "$NEW_ROOTFS/etc/passwd"
+            copy_and_notify "/etc/passwd-" "$NEW_ROOTFS/etc/passwd-"
+            copy_and_notify "/etc/group" "$NEW_ROOTFS/etc/group"
+            copy_and_notify "/etc/group-" "$NEW_ROOTFS/etc/group-"
+            copy_and_notify "/etc/shadow" "$NEW_ROOTFS/etc/shadow"
+            copy_and_notify "/etc/shadow-" "$NEW_ROOTFS/etc/shadow-"
+            copy_and_notify "/etc/gshadow" "$NEW_ROOTFS/etc/gshadow"
+            copy_and_notify "/etc/gshadow-" "$NEW_ROOTFS/etc/gshadow-"
+            copy_and_notify "/etc/hosts" "$NEW_ROOTFS/etc/hosts"
+            copy_and_notify "/etc/hostname" "$NEW_ROOTFS/etc/hostname"
+            copy_and_notify "/etc/timezone" "$NEW_ROOTFS/etc/timezone"
+            copy_and_notify "/etc/localtime" "$NEW_ROOTFS/etc/localtime"
+            copy_and_notify "/etc/fstab" "$NEW_ROOTFS/etc/fstab"
+            copy_and_notify "/etc/subuid" "$NEW_ROOTFS/etc/subuid"
+            copy_and_notify "/etc/subgid" "$NEW_ROOTFS/etc/subgid"
+            copy_and_notify "/etc/machine-id" "$NEW_ROOTFS/etc/machine-id"
+            copy_and_notify "/etc/resolv.conf" "$NEW_ROOTFS/etc/resolv.conf"
+            copy_and_notify "/etc/sudoers" "$NEW_ROOTFS/etc/sudoers"
+            echo "Done!"
+            felix86 --set-rootfs "$NEW_ROOTFS"
         else
-        echo "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"
-        exit 1
+            echo "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"
+            exit 1
         fi
         break
     else
