@@ -1,6 +1,8 @@
 
 #!/bin/bash
 
+set -e
+
 arch=$(uname -m)
 
 check_url() {
