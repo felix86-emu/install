@@ -146,7 +146,7 @@ while true; do
         NEW_ROOTFS=$(eval echo "$NEW_ROOTFS")
         NEW_ROOTFS=$(realpath "$NEW_ROOTFS")
         if [[ -z "$NEW_ROOTFS" || "$NEW_ROOTFS" == "/" ]]; then
-            echo "Error: Rootfs is empty or set to host root" >&2
+            echo "Error: Rootfs is set to host root" >&2
             exit 1
         fi
         if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
