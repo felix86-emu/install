@@ -25,11 +25,13 @@ for cmd in felix86 curl tar unzip sudo; do
     fi
 done
 
+echo "Installing felix86-gl4es helper script"
+
 INSTALLATION_DIR="/opt/felix86"
 
 sudo mkdir -p "$INSTALLATION_DIR/gl4es/lib"
 sudo curl -fsSL http://cdn.felix86.com/misc/gl4es/gl4es.zip -o "$INSTALLATION_DIR/gl4es/lib/gl4es.zip"
-sudo unzip "$INSTALLATION_DIR/gl4es/lib/gl4es.zip" -d "$INSTALLATION_DIR/gl4es/lib"
+sudo unzip -q "$INSTALLATION_DIR/gl4es/lib/gl4es.zip" -d "$INSTALLATION_DIR/gl4es/lib"
 sudo rm "$INSTALLATION_DIR/gl4es/lib/gl4es.zip"
 sudo ln -sf libGL.so.1 "$INSTALLATION_DIR/gl4es/lib/libGLX.so.0"
 
@@ -50,3 +52,19 @@ EOF
 chmod +x "$TMP"
 sudo mv "$TMP" "$INSTALLATION_DIR/gl4es/felix86-gl4es-wrapper.sh"
 sudo ln -sf "$INSTALLATION_DIR/gl4es/felix86-gl4es-wrapper.sh" /usr/bin/felix86-gl4es
+
+echo "┌───────────────────────────────────────┐"
+echo "│    felix86-gl4es is now installed!    │"
+echo "├───────────────────────────────────────┤"
+echo "│                                       │"
+echo "│ To enter an emulated bash, use:       │"
+echo "│                                       │"
+echo "│ felix86-gl4es                         |"
+echo "│                                       │"
+echo "├───────────────────────────────────────┤"
+echo "│                                       │"
+echo "│ Alternatively, run programs directly: │"
+echo "│                                       │"
+echo "│ felix86-gl4es /path/to/game_or_script |"
+echo "│                                       │"
+echo "└───────────────────────────────────────┘"
