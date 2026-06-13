@@ -34,19 +34,18 @@ sudo rm "$INSTALLATION_DIR/gl4es/lib/gl4es.zip"
 sudo ln -sf libGL.so.1 "$INSTALLATION_DIR/gl4es/lib/libGLX.so.0"
 
 TMP=$(mktemp)
-cat > "$TMP" << 'EOF'
+cat > "$TMP" << EOF
 #!/bin/bash
 set -euo pipefail
 if ! command -v felix86 >/dev/null 2>&1; then
     echo "Error: felix86 is not installed. Please install it and try again." >&2
     exit 1
 fi
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOTFS="$(felix86 -g)"
-export FELIX86_HOST_ENVIRONMENT="LD_LIBRARY_PATH=$DIR/lib"
+ROOTFS="\$(felix86 -g)"
+export FELIX86_HOST_ENVIRONMENT="LD_LIBRARY_PATH=$INSTALLATION_DIR/gl4es/lib"
 export FELIX86_ENABLED_THUNKS=glx
-export FELIX86_QUIET=0
-exec felix86 "$ROOTFS/bin/bash" -- "$@"
+export FELIX86_QUIET=1
+exec felix86 "\$ROOTFS/bin/bash" -- "\$@"
 EOF
 chmod +x "$TMP"
 sudo mv "$TMP" "$INSTALLATION_DIR/gl4es/felix86-gl4es-wrapper.sh"
