@@ -43,10 +43,13 @@ if ! command -v felix86 >/dev/null 2>&1; then
     echo "Error: felix86 is not installed. Please install it and try again." >&2
     exit 1
 fi
-ROOTFS="\$(felix86 -g)"
 export FELIX86_HOST_ENVIRONMENT="LD_LIBRARY_PATH=$INSTALLATION_DIR/gl4es/lib"
 export FELIX86_ENABLED_THUNKS=glx
 export FELIX86_QUIET=1
+if [ \$# -eq 0 ]; then
+    exec felix86 --shell
+fi
+ROOTFS="\$(felix86 -g)"
 exec felix86 "\$ROOTFS/bin/bash" -- "\$@"
 EOF
 chmod +x "$TMP"
