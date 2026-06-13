@@ -34,6 +34,7 @@ sudo curl -fsSL http://cdn.felix86.com/misc/gl4es/gl4es.zip -o "$INSTALLATION_DI
 sudo unzip -q "$INSTALLATION_DIR/gl4es/lib/gl4es.zip" -d "$INSTALLATION_DIR/gl4es/lib"
 sudo rm "$INSTALLATION_DIR/gl4es/lib/gl4es.zip"
 sudo ln -sf libGL.so.1 "$INSTALLATION_DIR/gl4es/lib/libGLX.so.0"
+sudo ln -sf libGL.so.1 "$INSTALLATION_DIR/gl4es/lib/libEGL.so.1"
 
 TMP=$(mktemp)
 cat > "$TMP" << EOF
@@ -43,8 +44,8 @@ if ! command -v felix86 >/dev/null 2>&1; then
     echo "Error: felix86 is not installed. Please install it and try again." >&2
     exit 1
 fi
-export FELIX86_HOST_ENVIRONMENT="LD_LIBRARY_PATH=$INSTALLATION_DIR/gl4es/lib"
-export FELIX86_ENABLED_THUNKS=glx
+export LD_LIBRARY_PATH="$INSTALLATION_DIR/gl4es/lib"
+export FELIX86_ENABLED_THUNKS=glx,egl
 export FELIX86_QUIET=1
 export LIBGL_NOBANNER=1
 if [ \$# -eq 0 ]; then
