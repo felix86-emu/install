@@ -157,7 +157,7 @@ while true; do
             echo "Installing rootfs to $NEW_ROOTFS"
             echo "Creating rootfs directory..."
             sudo mkdir -p "$NEW_ROOTFS"
-            if ! sudo -u nobody test -r "$NEW_ROOTFS"; then
+            if ! sudo -u nobody sh -c "test -r '$NEW_ROOTFS'"; then
                 echo -e "\033[33mWarning: Different users cannot access this rootfs path. This may lead into problems with programs that try to switch to a different user.\033[0m"
                 echo "It is not recommended you install the rootfs in paths not accessible by all users, such as the home directory."
                 read -p "Are you sure you want to install the rootfs at $NEW_ROOTFS? (y/N) " -n 1 -r
