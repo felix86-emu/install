@@ -19,39 +19,15 @@ if [ "$arch" != "riscv64" ]; then
     exit 1
 fi
 
-if ! command -v curl >/dev/null 2>&1; then
-    echo "Error: curl is not installed. Please install it and try again."
-    exit 1
-fi
+missing=()
+for cmd in curl tar unzip sudo jq patchelf; do
+    command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
+done
 
-if ! command -v tar >/dev/null 2>&1; then
-    echo "Error: tar is not installed. Please install it and try again."
-    exit 1
-fi
-
-if ! command -v unzip >/dev/null 2>&1; then
-    echo "Error: unzip is not installed. Please install it and try again."
-    exit 1
-fi
-
-if ! command -v sudo >/dev/null 2>&1; then
-    echo "Error: sudo is not installed. Please install it and try again."
-    exit 1
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-    echo "Error: jq is not installed. Please install it and try again."
-    echo "On Ubuntu/Debian: sudo apt install jq"
-    echo "On Arch: sudo pacman -S jq"
-    echo "On Fedora: sudo dnf install jq"
-    echo "On openSUSE: sudo zypper install jq"
-    exit 1
-fi
-
-if ! command -v patchelf >/dev/null 2>&1; then
-    echo "Error: patchelf is not installed. Please install it and try again."
-    echo "On Ubuntu/Debian: sudo apt install patchelf"
-    echo "On Arch: sudo pacman -S patchelf"
+if [ ${#missing[@]} -gt 0 ]; then
+    echo "Error: missing required tools: ${missing[*]}"
+    echo "  Ubuntu/Debian: sudo apt install ${missing[*]}"
+    echo "  Arch:          sudo pacman -S ${missing[*]}"
     exit 1
 fi
 
