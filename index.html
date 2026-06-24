@@ -236,6 +236,8 @@ sudo chown -R 0:0 "$INSTALLATION_DIR/lib"
 echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR/lib"
 felix86 --set-thunks $INSTALLATION_DIR/lib
 
+rmdir /tmp/felix86_artifact/lib/x86_64-linux-gnu
+rmdir /tmp/felix86_artifact/lib
 rmdir /tmp/felix86_artifact
 
 current_rootfs=$(felix86 -g)
