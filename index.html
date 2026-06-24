@@ -230,7 +230,7 @@ EOF
 sudo mv "/tmp/felix86_artifact/felix86-loader.sh" "$INSTALLATION_DIR/felix86-loader.sh"
 sudo chown 0:0 "$INSTALLATION_DIR/felix86-loader.sh"
 sudo chmod +x "$INSTALLATION_DIR/felix86-loader.sh"
-sudo ln -s "$INSTALLATION_DIR/felix86-loader.sh" /usr/bin/felix86
+sudo ln -sf "$INSTALLATION_DIR/felix86-loader.sh" /usr/bin/felix86
 sudo chown 0:0 $FILE
 sudo chown -R 0:0 "$INSTALLATION_DIR/lib"
 echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR/lib"
