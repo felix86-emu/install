@@ -206,6 +206,9 @@ unzip -o -d /tmp/felix86_artifact/glibc /tmp/felix86_artifact/glibc/glibc.zip
 rm /tmp/felix86_artifact/glibc/glibc.zip
 sudo mv /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu/* "$INSTALLATION_DIR/lib/riscv64-linux-gnu/"
 sudo mv /tmp/felix86_artifact/glibc/licenses/* "$INSTALLATION_DIR/licenses"
+rmdir /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu
+rmdir /tmp/felix86_artifact/glibc/lib
+rmdir /tmp/felix86_artifact/glibc/licenses
 rmdir /tmp/felix86_artifact/glibc
 
 FELIX86_BIN="$FILE"
