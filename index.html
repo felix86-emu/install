@@ -221,7 +221,26 @@ if [ -f "/tmp/felix86_artifact/felix86-mounter" ]; then
     sudo ln -s $INSTALLATION_DIR/felix86-mounter /usr/bin/felix86-mounter
 fi
 sudo mv /tmp/felix86_artifact/lib $INSTALLATION_DIR/
-sudo ln -s $FILE /usr/bin/felix86
+
+FELIX86_BIN="$FILE"
+FELIX86_LDSO="$INSTALLATION_DIR/lib/riscv64-linux-gnu/ld-linux-riscv64-lp64d.so.1"
+FELIX86_LIBPATH="$INSTALLATION_DIR/lib/riscv64-linux-gnu"
+cat << EOF > /tmp/felix86_artifact/felix86-loader.sh
+#!/bin/sh
+LDSO="${FELIX86_LDSO}"
+FELIX86="${FELIX86_BIN}"
+LIBPATH="${FELIX86_LIBPATH}"
+
+if [ -x "\$LDSO" ]; then
+    exec "\$LDSO" --library-path "\$LIBPATH" "\$FELIX86" "\$@"
+else
+    exec "\$FELIX86" "\$@"
+fi
+EOF
+
+sudo mv "/tmp/felix86_artifact/felix86-loader.sh" "$INSTALLATION_DIR/felix86-loader.sh"
+sudo chown 0:0 "$INSTALLATION_DIR/felix86-loader.sh"
+sudo ln -s "$INSTALLATION_DIR/felix86-loader.sh" /usr/bin/felix86
 sudo chown 0:0 $FILE
 sudo chown -R 0:0 $INSTALLATION_DIR/lib
 echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR/lib"
