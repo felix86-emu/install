@@ -48,6 +48,13 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 1
 fi
 
+if ! command -v patchelf >/dev/null 2>&1; then
+    echo "Error: patchelf is not installed. Please install it and try again."
+    echo "On Ubuntu/Debian: sudo apt install patchelf"
+    echo "On Arch: sudo pacman -S patchelf"
+    exit 1
+fi
+
 if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
     echo "Error: \$HOME is not set or not a valid directory."
     exit 1
@@ -211,27 +218,12 @@ rmdir /tmp/felix86_artifact/glibc/lib
 rmdir /tmp/felix86_artifact/glibc/licenses
 rmdir /tmp/felix86_artifact/glibc
 
-FELIX86_BIN="$FILE"
-FELIX86_LDSO="$INSTALLATION_DIR/lib/riscv64-linux-gnu/ld-linux-riscv64-lp64d.so.1"
-FELIX86_LIBPATH="$INSTALLATION_DIR/lib/riscv64-linux-gnu"
-cat << EOF > /tmp/felix86_artifact/felix86-loader.sh
-#!/bin/sh
-LDSO="${FELIX86_LDSO}"
-FELIX86="${FELIX86_BIN}"
-LIBPATH="${FELIX86_LIBPATH}"
-
-if [ -x "\$LDSO" ]; then
-    exec "\$LDSO" --library-path "\$LIBPATH" "\$FELIX86" "\$@"
-else
-    exec "\$FELIX86" "\$@"
-fi
-EOF
-
-sudo mv "/tmp/felix86_artifact/felix86-loader.sh" "$INSTALLATION_DIR/felix86-loader.sh"
-sudo chown 0:0 "$INSTALLATION_DIR/felix86-loader.sh"
-sudo chmod +x "$INSTALLATION_DIR/felix86-loader.sh"
-sudo ln -sf "$INSTALLATION_DIR/felix86-loader.sh" /usr/bin/felix86
-sudo chown 0:0 $FILE
+sudo ln -sf "$FILE" /usr/bin/felix86
+sudo patchelf --set-interpreter "$INSTALLATION_DIR/lib/riscv64-linux-gnu/ld-linux-riscv64-lp64d.so.1" \
+         --add-rpath "$INSTALLATION_DIR/lib/riscv64-linux-gnu" \
+         "$FILE"
+sudo chown 0:0 "$FILE"
+sudo chmod +x "$FILE"
 sudo chown -R 0:0 "$INSTALLATION_DIR/lib"
 echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR/lib"
 felix86 --set-thunks $INSTALLATION_DIR/lib
