@@ -105,15 +105,22 @@ echo "│                                       │"
 echo "└───────────────────────────────────────┘"
 echo
 
+max_name_width=25
+for name in "${names[@]}"; do
+    if (( ${#name} > max_name_width )); then
+        max_name_width=${#name}
+    fi
+done
+
 i=1
 for name in "${names[@]}"; do
     size=$(jq -r --arg n "$name" '.[$n].size' <<< "$json")
     recommended=$(jq -r --arg n "$name" '.[$n].recommended' <<< "$json")
 
     if [[ "$recommended" == "true" ]]; then
-        printf " %d) %-25s %s\n" $i "$name" "[Size: $size] [Recommended]"
+        printf " %d) %-*s %s\n" $i $max_name_width "$name" "[Size: $size] [Recommended]"
     else
-        printf " %d) %-25s %s\n" $i "$name" "[Size: $size]"
+        printf " %d) %-*s %s\n" $i $max_name_width "$name" "[Size: $size]"
     fi
     ((i++))
 done
