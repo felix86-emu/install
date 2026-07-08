@@ -88,8 +88,6 @@ if [ -z "$USER" ]; then
     exit 1
 fi
 
-sudo mkdir -p $INSTALLATION_DIR
-
 check_url "https://cdn.felix86.com/rootfs/meta.json"
 json=$(curl -s https://cdn.felix86.com/rootfs/meta.json)
 mapfile -t names < <(jq -r 'to_entries[].key' <<< "$json")
@@ -160,9 +158,9 @@ while true; do
         fi
         if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
             echo "Checking if $selected_url is live..."
-            check_url $selected_url
+            check_url $selectsudoed_url
             echo "Installing rootfs to $NEW_ROOTFS"
-            echo "Creating rootfs directory..."
+            echo "Creating rootfs directory, requesting permission..."
             sudo mkdir -p "$NEW_ROOTFS"
             if ! sudo -u nobody sh -c "test -r '$NEW_ROOTFS'"; then
                 echo -e "\033[33mWarning: Different users cannot access this rootfs path. This may lead into problems with programs that try to switch to a different user.\033[0m"
