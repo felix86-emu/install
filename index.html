@@ -173,11 +173,9 @@ sudo mkdir -p "$INSTALLATION_DIR/lib/riscv64-linux-gnu"
 sudo mkdir -p "$INSTALLATION_DIR/licenses"
 
 sudo mv /tmp/felix86_artifact/felix86 $FILE
-if [ -f "/tmp/felix86_artifact/felix86-mounter" ]; then
-    sudo mv /tmp/felix86_artifact/felix86-mounter $INSTALLATION_DIR/felix86-mounter
-    sudo chown root:root $INSTALLATION_DIR/felix86-mounter
-    sudo chmod u+s $INSTALLATION_DIR/felix86-mounter
-    sudo ln -s $INSTALLATION_DIR/felix86-mounter /usr/bin/felix86-mounter
+if [ -f "/tmp/felix86_artifact/felix86.png" ]; then
+  sudo mkdir -p "$INSTALLATION_DIR/icons"
+  sudo mv "/tmp/felix86_artifact/felix86.png" "$INSTALLATION_DIR/icons/felix86.png"
 fi
 sudo mv /tmp/felix86_artifact/lib/x86_64-linux-gnu/* "$INSTALLATION_DIR/lib/x86_64-linux-gnu/"
 
