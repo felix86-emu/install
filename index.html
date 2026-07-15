@@ -177,9 +177,9 @@ select_release_url
 
 echo "Downloading felix86 from $FELIX86_LINK ..."
 mkdir -p /tmp/felix86_artifact
-curl -L "$FELIX86_LINK" -o /tmp/felix86_artifact/archive.zip
+curl -L --progress-bar "$FELIX86_LINK" -o /tmp/felix86_artifact/archive.zip
 echo "Unzipping..."
-unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
+unzip -oq -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
 echo "Moving felix86 executable to $FILE, requesting permission..."
 sudo mkdir -p "$INSTALLATION_DIR"
@@ -198,8 +198,8 @@ sudo mv /tmp/felix86_artifact/lib/x86_64-linux-gnu/* "$INSTALLATION_DIR/lib/x86_
 echo "Downloading custom glibc fork..."
 mkdir -p /tmp/felix86_artifact/glibc
 FELIX86_GLIBC_LINK="https://github.com/felix86-emu/glibc/releases/download/2.4.3-felix86/glibc-felix86.zip"
-curl -fsSL "$FELIX86_GLIBC_LINK" -o /tmp/felix86_artifact/glibc/glibc.zip
-unzip -o -d /tmp/felix86_artifact/glibc /tmp/felix86_artifact/glibc/glibc.zip
+curl -fSL --progress-bar "$FELIX86_GLIBC_LINK" -o /tmp/felix86_artifact/glibc/glibc.zip
+unzip -oq -d /tmp/felix86_artifact/glibc /tmp/felix86_artifact/glibc/glibc.zip
 rm /tmp/felix86_artifact/glibc/glibc.zip
 sudo mv /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu/* "$INSTALLATION_DIR/lib/riscv64-linux-gnu/"
 sudo mv /tmp/felix86_artifact/glibc/licenses/* "$INSTALLATION_DIR/licenses"
