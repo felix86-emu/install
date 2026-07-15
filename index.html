@@ -5,22 +5,20 @@ set -euo pipefail
 arch=$(uname -m)
 
 if [ "$(id -u)" -eq 0 ]; then
-    echo "This script is not meant to be run as root."
-    echo "It will create a home directory inside the rootfs for your current user, and if that user is root, this might not be what you want."
-    read -p "Are you sure you want to continue as root? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    if ! whiptail --title "Warning" --yesno \
+      "This script is not meant to be run as root.\n\nIt will create a home directory inside the rootfs for your current user, and if that user is root, this might not be what you want.\n\nAre you sure you want to continue as root?" \
+      12 60; then
         exit 1
     fi
 fi
 
 if [ "$arch" != "riscv64" ]; then
     echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
-    exit 1
+    # exit 1
 fi
 
 missing=()
-for cmd in curl tar unzip sudo jq patchelf; do
+for cmd in curl tar unzip sudo jq patchelf whiptail; do
     command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
 done
 
@@ -98,43 +96,32 @@ select_release_url() {
     return 1
   fi
 
-  echo "┌───────────────────────────────────────┐"
-  echo "│   Welcome to the felix86 installer!   │"
-  echo "├───────────────────────────────────────┤"
-  echo "│                                       │"
-  echo "│  Please choose the version you'd      │"
-  echo "│  like to install                      │"
-  echo "│                                       │"
-  echo "└───────────────────────────────────────┘"
-  echo 
-
+  local menu_items=()
   for i in "${!entries[@]}"; do
     local version="${entries[$i]%% *}"
-    local display="felix86 $version"
-    local extra=""
+    local desc=""
     if [[ $i -eq 0 ]]; then
-        extra="[Default]"
+      desc="  (Recommended)"
     fi
-    printf " %d) %-17s %s\n" $((i+1)) "$display" "$extra"
+    local num=$((i+1))
+    menu_items+=("${num})" "felix86 $version$desc")
   done
 
   local latest_index=$(( ${#entries[@]} + 1 ))
-  printf " %d) %-17s %s\n" $latest_index "Nightly version" "[Unstable]"
+  menu_items+=("${latest_index})" "Nightly version  (Unstable)")
 
   local choose_nightly_index=$(( ${#entries[@]} + 2 ))
-  printf " %d) %s\n" $choose_nightly_index "Choose specific build"
-  echo
+  menu_items+=("${choose_nightly_index})" "Choose specific build")
 
+  local menu_height=$(( ${#entries[@]} + 4 ))
   local choice
-  while true; do
-    read -p "Choose a release (1-$choose_nightly_index) [default: 1]: " choice
-    choice=${choice:-1}
-    if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && (( choice >= 1 && choice <= choose_nightly_index )); then
-      break
-    else
-      echo "Invalid selection. Please choose a number between 1 and $choose_nightly_index."
-    fi
-  done
+  choice=$(whiptail --title "felix86 Installer" \
+    --menu "Welcome to the felix86 installer!\n\nChoose the version you'd like to install:" \
+    20 55 $menu_height \
+    "${menu_items[@]}" \
+    --default-item "1)" \
+    3>&1 1>&2 2>&3) || exit 1
+  choice="${choice%)}"
 
   if (( choice == latest_index )); then
     echo "Fetching latest artifact link..."
@@ -151,21 +138,30 @@ select_release_url() {
     fi
     artifacts_array=$(echo "$github_api_response" | jq -s '.')
     artifacts_length=$(echo "$artifacts_array" | jq 'length')
-    echo "Available artifacts:"
-    echo "$artifacts_array" | jq -r 'to_entries[] | "\(.key + 1)) felix86 commit \(.value.workflow_run.head_sha[0:7]) from \(.value.created_at | strptime("%Y-%m-%dT%H:%M:%SZ") | strftime("%Y-%m-%d %H:%M"))"'
-    echo ""
-    read -p "Select artifact (1-$artifacts_length): " selection
-    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le "$artifacts_length" ]; then
-      selected_id=$(echo "$artifacts_array" | jq -r ".[$((selection-1))].workflow_run.id")
-      if [ -z "$selected_id" ]; then
-        echo "Failed to get artifact id?"
-        exit 1
-      fi
-      FELIX86_LINK=https://nightly.link/OFFTKP/felix86/actions/runs/$selected_id/linux_artifact.zip
-    else
-      echo "Invalid selection"
+
+    local artifact_menu=()
+    for i in $(seq 0 $((artifacts_length - 1))); do
+      local sha=$(echo "$artifacts_array" | jq -r ".[$i].workflow_run.head_sha[0:7]")
+      local date=$(echo "$artifacts_array" | jq -r ".[$i].created_at | strptime(\"%Y-%m-%dT%H:%M:%SZ\") | strftime(\"%Y-%m-%d %H:%M\")")
+      local num=$((i+1))
+      artifact_menu+=("${num})" "commit $sha  ($date)")
+    done
+
+    local artifact_menu_height=$((artifacts_length > 10 ? 10 : artifacts_length))
+    local selection
+    selection=$(whiptail --title "felix86 Installer" \
+      --menu "Choose a specific nightly build:" \
+      20 60 $artifact_menu_height \
+      "${artifact_menu[@]}" \
+      3>&1 1>&2 2>&3) || exit 1
+    selection="${selection%)}"
+
+    selected_id=$(echo "$artifacts_array" | jq -r ".[$((selection-1))].workflow_run.id")
+    if [ -z "$selected_id" ]; then
+      echo "Failed to get artifact id?"
       exit 1
     fi
+    FELIX86_LINK=https://nightly.link/OFFTKP/felix86/actions/runs/$selected_id/linux_artifact.zip
   else
     ver=${entries[$((choice-1))]}
     selected="https://github.com/OFFTKP/felix86/releases/download/$ver/felix86.$ver.zip"
@@ -233,10 +229,9 @@ else
 fi
 INSTALL_ROOTFS=1
 if [[ -n "$current_rootfs" && -d "$current_rootfs" ]]; then
-  echo "Looks like you already have a rootfs at $current_rootfs"
-  read -p "Do you want to install a new rootfs anyway? (y/N) " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+  if ! whiptail --title "Rootfs already exists" --yesno \
+    "Looks like you already have a rootfs at:\n\n$current_rootfs\n\nDo you want to install a new rootfs anyway?" \
+    12 60; then
       INSTALL_ROOTFS=0
   fi
 fi
@@ -269,29 +264,19 @@ if [ "$exit_code" -ne 42 ]; then
     exit 1
 fi
 
-echo "felix86 installed successfully"
-echo
-echo
+whiptail --title "felix86 is now installed!" --msgbox \
+"To enter an emulated bash, use:
 
-echo "┌───────────────────────────────────────┐"
-echo "│       felix86 is now installed!       │"
-echo "├───────────────────────────────────────┤"
-echo "│                                       │"
-echo "│ To enter an emulated bash, use:       │"
-echo "│                                       │"
-echo "│ felix86 --shell   (25.12 and later)   │"
-echo "│                                       │"
-echo "│   OR                                  │"
-echo "│                                       │"
-echo "│ felix86 /path/to/rootfs/bin/bash      │"
-echo "│                                       │"
-echo "├───────────────────────────────────────┤"
-echo "│                                       │"
-echo "│ Alternatively, run programs directly: │"
-echo "│                                       │"
-echo "│ /path/to/rootfs/MyGame.AppImage       │"
-echo "│                                       │"
-echo "└───────────────────────────────────────┘"
+  felix86 --shell
+
+    OR
+
+  felix86 /path/to/rootfs/bin/bash
+
+Alternatively, run programs directly:
+
+  /path/to/rootfs/MyGame.AppImage" \
+16 50
 
 if ! felix86 -d; then
   echo "Failed binfmt_misc installation check"
