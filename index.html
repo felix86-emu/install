@@ -249,8 +249,6 @@ fi
 # Finally register felix86 in binfmt_misc
 sudo --preserve-env=HOME felix86 --binfmt-misc
 
-echo "Running a test program..."
-
 # Let's try to run a test program
 set +e
 FELIX86_QUIET=1 felix86 "$NEW_ROOTFS/bin/bash" -c "exit 42"
@@ -276,7 +274,7 @@ whiptail --title "felix86 is now installed!" --msgbox \
 Alternatively, run programs directly:
 
   /path/to/rootfs/MyGame.AppImage" \
-16 50
+20 50
 
 if ! felix86 -d; then
   echo "Failed binfmt_misc installation check"
