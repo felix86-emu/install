@@ -174,7 +174,6 @@ select_release_url
 echo "Downloading felix86 from $FELIX86_LINK ..."
 mkdir -p /tmp/felix86_artifact
 curl -L --progress-bar "$FELIX86_LINK" -o /tmp/felix86_artifact/archive.zip
-echo "Unzipping..."
 unzip -oq -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
 echo "Moving felix86 executable to $FILE, requesting permission..."
@@ -229,7 +228,7 @@ else
 fi
 INSTALL_ROOTFS=1
 if [[ -n "$current_rootfs" && -d "$current_rootfs" ]]; then
-  if ! whiptail --title "Rootfs already exists" --yesno \
+  if ! whiptail --title "Rootfs already exists" --defaultno --yesno \
     "Looks like you already have a rootfs at:\n\n$current_rootfs\n\nDo you want to install a new rootfs anyway?" \
     20 60; then
       INSTALL_ROOTFS=0
