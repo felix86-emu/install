@@ -183,7 +183,7 @@ while true; do
         fi
         if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
             echo "Checking if $selected_url is live..."
-            check_url $selectsudoed_url
+            check_url $selected_url
             echo "Installing rootfs to $NEW_ROOTFS"
             echo "Creating rootfs directory, requesting permission..."
             sudo mkdir -p "$NEW_ROOTFS"
