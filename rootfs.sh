@@ -99,19 +99,38 @@ json=$(curl -s https://cdn.felix86.com/rootfs/meta.json)
 mapfile -t names < <(jq -r 'to_entries[].key' <<< "$json")
 default_index=$(jq -r 'to_entries | map(.value.recommended) | index(true)' <<< "$json")
 
+max_name_width=0
+for name in "${names[@]}"; do
+    if (( ${#name} > max_name_width )); then
+        max_name_width=${#name}
+    fi
+done
+
+max_size_width=0
+for i in "${!names[@]}"; do
+    size=$(jq -r --arg n "${names[$i]}" '.[$n].size' <<< "$json")
+    if (( ${#size} > max_size_width )); then
+        max_size_width=${#size}
+    fi
+done
+
 menu_items=()
 default_tag=""
 for i in "${!names[@]}"; do
     name="${names[$i]}"
     size=$(jq -r --arg n "$name" '.[$n].size' <<< "$json")
     recommended=$(jq -r --arg n "$name" '.[$n].recommended' <<< "$json")
+    experimental=$(jq -r --arg n "$name" '.[$n].experimental // false' <<< "$json")
     local_num=$((i+1))
-    desc="Size: $size"
+    tag=""
     if [[ "$recommended" == "true" ]]; then
-        desc="Size: $size  (Recommended)"
+        tag="(Recommended)"
         default_tag="${local_num})"
+    elif [[ "$experimental" == "true" ]]; then
+        tag="(Experimental)"
     fi
-    menu_items+=("${local_num})" "$name  [$desc]")
+    entry=$(printf "%-${max_name_width}s  [%${max_size_width}s]  %s" "$name" "$size" "$tag")
+    menu_items+=("${local_num})" "$entry")
 done
 
 custom_index=$(( ${#names[@]} + 1 ))
@@ -120,7 +139,7 @@ menu_items+=("${custom_index})" "Enter custom path")
 menu_height=$(( ${#names[@]} + 3 ))
 choice=$(whiptail --title "felix86 Rootfs Installer" \
     --menu "Choose the rootfs you'd like to install:" \
-    20 60 $menu_height \
+    20 75 $menu_height \
     "${menu_items[@]}" \
     --default-item "$default_tag" \
     3>&1 1>&2 2>&3) || exit 1
@@ -133,7 +152,7 @@ if [[ "$choice" == "$custom_index" ]]; then
     set_rootfs "$line"
     whiptail --title "Note" --msgbox \
       "Please make sure to properly copy relevant files in your rootfs, if you haven't already.\n\nSee https://felix86.com/docs/devs/building-instructions/#important-files for more info" \
-      20 60
+      12 78
     NEW_ROOTFS="$line"
 else
     selected="${names[choice-1]}"
