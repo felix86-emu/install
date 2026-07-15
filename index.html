@@ -54,7 +54,7 @@ felix86_version_gte() {
     local req_major req_minor ver_major ver_minor
     IFS='.' read -r req_major req_minor <<< "$required"
     IFS='.' read -r ver_major ver_minor <<< "$version"
-    if (( ver_major > req_major )) || (( ver_major == req_major && ver_minor >= req_minor )); then
+    if (( 10#$ver_major > 10#$req_major )) || (( 10#$ver_major == 10#$req_major && 10#$ver_minor >= 10#$req_minor )); then
         return 0
     fi
     return 1
