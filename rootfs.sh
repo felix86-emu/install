@@ -5,6 +5,31 @@ set -euo pipefail
 
 INSTALLATION_DIR="/opt/felix86"
 
+felix86_version_gte() {
+    local required="$1"
+    local version
+    version=$(felix86 --version 2>/dev/null | grep -oP '\d+\.\d+' | head -1)
+    if [[ -z "$version" ]]; then
+        return 1
+    fi
+    local req_major req_minor ver_major ver_minor
+    IFS='.' read -r req_major req_minor <<< "$required"
+    IFS='.' read -r ver_major ver_minor <<< "$version"
+    if (( ver_major > req_major )) || (( ver_major == req_major && ver_minor >= req_minor )); then
+        return 0
+    fi
+    return 1
+}
+
+set_rootfs() {
+    local path="$1"
+    if felix86_version_gte "26.08"; then
+        sudo felix86 --set-config general.rootfs_path="$path"
+    else
+        felix86 --set-rootfs "$path"
+    fi
+}
+
 arch=$(uname -m)
 
 check_url() {
@@ -138,8 +163,8 @@ while true; do
         echo "You selected to use your own rootfs."
         echo "Please specify the absolute path to your rootfs"
         read -p "Path: " line
-        felix86 --set-rootfs "$line"
-        echo "Please make sure to properly copy relevant files in your rootfs, if you haven't already. See https://felix86.com/docs/devs/building-instructions/#important-files for more info" 
+        set_rootfs "$line"
+        echo "Please make sure to properly copy relevant files in your rootfs, if you haven't already. See https://felix86.com/docs/devs/building-instructions/#important-files for more info"
         NEW_ROOTFS="$line"
         break
     fi
@@ -213,8 +238,13 @@ while true; do
             copy_and_notify "/etc/resolv.conf" "$NEW_ROOTFS/etc/resolv.conf"
             copy_and_notify "/etc/sudoers" "$NEW_ROOTFS/etc/sudoers"
             echo "Done!"
-            if ! felix86 --set-rootfs "$NEW_ROOTFS"; then
-                echo "Failed to set rootfs to $NEW_ROOTFS, please run felix86 --set-rootfs $NEW_ROOTFS"
+            if ! set_rootfs "$NEW_ROOTFS"; then
+                echo "Failed to set rootfs to $NEW_ROOTFS"
+                if felix86_version_gte "26.08"; then
+                    echo "Please run: sudo felix86 --set-config general.rootfs_path=$NEW_ROOTFS"
+                else
+                    echo "Please run: felix86 --set-rootfs $NEW_ROOTFS"
+                fi
             fi
         else
             echo "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"

@@ -44,6 +44,22 @@ fi
 INSTALLATION_DIR="/opt/felix86"
 FILE="$INSTALLATION_DIR/felix86"
 
+felix86_version_gte() {
+    local required="$1"
+    local version
+    version=$(felix86 --version 2>/dev/null | grep -oP '\d+\.\d+' | head -1)
+    if [[ -z "$version" ]]; then
+        return 1
+    fi
+    local req_major req_minor ver_major ver_minor
+    IFS='.' read -r req_major req_minor <<< "$required"
+    IFS='.' read -r ver_major ver_minor <<< "$version"
+    if (( ver_major > req_major )) || (( ver_major == req_major && ver_minor >= req_minor )); then
+        return 0
+    fi
+    return 1
+}
+
 check_url() {
   local url="$1"
 
@@ -200,13 +216,21 @@ sudo chown 0:0 "$FILE"
 sudo chmod +x "$FILE"
 sudo chown -R 0:0 "$INSTALLATION_DIR/lib"
 echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR/lib"
-felix86 --set-thunks $INSTALLATION_DIR/lib
+if felix86_version_gte "26.08"; then
+  sudo felix86 --set-config general.thunks_path=$INSTALLATION_DIR/lib
+else
+  felix86 --set-thunks $INSTALLATION_DIR/lib
+fi
 
 rmdir /tmp/felix86_artifact/lib/x86_64-linux-gnu
 rmdir /tmp/felix86_artifact/lib
 rmdir /tmp/felix86_artifact
 
-current_rootfs=$(felix86 -g)
+if felix86_version_gte "26.08"; then
+  current_rootfs=$(felix86 --get-config general.rootfs_path)
+else
+  current_rootfs=$(felix86 -g)
+fi
 INSTALL_ROOTFS=1
 if [[ -n "$current_rootfs" && -d "$current_rootfs" ]]; then
   echo "Looks like you already have a rootfs at $current_rootfs"
@@ -221,7 +245,11 @@ if [[ "$INSTALL_ROOTFS" == "1" ]]; then
   bash <(curl -s https://install.felix86.com/rootfs.sh)
 fi
 
-NEW_ROOTFS=$(felix86 -g)
+if felix86_version_gte "26.08"; then
+  NEW_ROOTFS=$(felix86 --get-config general.rootfs_path)
+else
+  NEW_ROOTFS=$(felix86 -g)
+fi
 
 # Finally register felix86 in binfmt_misc
 sudo --preserve-env=HOME felix86 --binfmt-misc
