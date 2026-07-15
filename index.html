@@ -7,14 +7,14 @@ arch=$(uname -m)
 if [ "$(id -u)" -eq 0 ]; then
     if ! whiptail --title "Warning" --yesno \
       "This script is not meant to be run as root.\n\nIt will create a home directory inside the rootfs for your current user, and if that user is root, this might not be what you want.\n\nAre you sure you want to continue as root?" \
-      12 60; then
+      20 60; then
         exit 1
     fi
 fi
 
 if [ "$arch" != "riscv64" ]; then
     echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
-    # exit 1
+    exit 1
 fi
 
 missing=()
@@ -231,7 +231,7 @@ INSTALL_ROOTFS=1
 if [[ -n "$current_rootfs" && -d "$current_rootfs" ]]; then
   if ! whiptail --title "Rootfs already exists" --yesno \
     "Looks like you already have a rootfs at:\n\n$current_rootfs\n\nDo you want to install a new rootfs anyway?" \
-    12 60; then
+    20 60; then
       INSTALL_ROOTFS=0
   fi
 fi
