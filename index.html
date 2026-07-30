@@ -42,6 +42,11 @@ fi
 INSTALLATION_DIR="/opt/felix86"
 FILE="$INSTALLATION_DIR/felix86"
 
+IS_UPDATE=0
+if [ -x "$FILE" ]; then
+  IS_UPDATE=1
+fi
+
 felix86_version_gte() {
     local required="$1"
     local version
@@ -228,15 +233,14 @@ else
 fi
 INSTALL_ROOTFS=1
 if [[ -n "$current_rootfs" && -d "$current_rootfs" ]]; then
-  if ! whiptail --title "Rootfs already exists" --defaultno --yesno \
-    "Looks like you already have a rootfs at:\n\n$current_rootfs\n\nDo you want to install a new rootfs anyway?" \
-    20 60; then
-      INSTALL_ROOTFS=0
-  fi
+  INSTALL_ROOTFS=0
+  echo "Looks like you already have a rootfs at $current_rootfs, I will not install a new rootfs"
+  echo "If you want to install a new rootfs use the rootfs installer script:"
+  echo "    curl -fsSL https://install.felix86.com/rootfs.sh"
 fi
 
 if [[ "$INSTALL_ROOTFS" == "1" ]]; then
-  bash <(curl -s https://install.felix86.com/rootfs.sh)
+  bash <(curl -fsSL https://install.felix86.com/rootfs.sh)
 fi
 
 if felix86_version_gte "26.08"; then
@@ -261,7 +265,10 @@ if [ "$exit_code" -ne 42 ]; then
     exit 1
 fi
 
-whiptail --title "felix86 is now installed!" --msgbox \
+if [ "$IS_UPDATE" -eq 1 ]; then
+  echo "felix86 successfully updated."
+else
+  whiptail --title "felix86 is now installed!" --msgbox \
 "To enter an emulated bash, use:
 
   felix86 --shell
@@ -274,6 +281,7 @@ Alternatively, run programs directly:
 
   /path/to/rootfs/MyGame.AppImage" \
 20 50
+fi
 
 if ! felix86 -d; then
   echo "Failed binfmt_misc installation check"
