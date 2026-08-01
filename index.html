@@ -214,18 +214,20 @@ if [ ! -f "/usr/share/icons/hicolor/128x128/apps/felix86.png" ]; then
 fi
 sudo mv /tmp/felix86_artifact/lib/x86_64-linux-gnu/* "$INSTALLATION_DIR/lib/x86_64-linux-gnu/"
 
-echo "Downloading custom glibc fork..."
-mkdir -p /tmp/felix86_artifact/glibc
-FELIX86_GLIBC_LINK="https://github.com/felix86-emu/glibc/releases/download/2.4.3-felix86/glibc-felix86.zip"
-curl -fSL --progress-bar "$FELIX86_GLIBC_LINK" -o /tmp/felix86_artifact/glibc/glibc.zip
-unzip -oq -d /tmp/felix86_artifact/glibc /tmp/felix86_artifact/glibc/glibc.zip
-rm /tmp/felix86_artifact/glibc/glibc.zip
-sudo mv /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu/* "$INSTALLATION_DIR/lib/riscv64-linux-gnu/"
-sudo mv /tmp/felix86_artifact/glibc/licenses/* "$INSTALLATION_DIR/licenses"
-rmdir /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu
-rmdir /tmp/felix86_artifact/glibc/lib
-rmdir /tmp/felix86_artifact/glibc/licenses
-rmdir /tmp/felix86_artifact/glibc
+if [ ! -f "$INSTALLATION_DIR/lib/riscv64-linux-gnu/libc.so.6" ]; then
+  echo "Downloading custom glibc fork..."
+  mkdir -p /tmp/felix86_artifact/glibc
+  FELIX86_GLIBC_LINK="https://github.com/felix86-emu/glibc/releases/download/2.4.3-felix86/glibc-felix86.zip"
+  curl -fSL --progress-bar "$FELIX86_GLIBC_LINK" -o /tmp/felix86_artifact/glibc/glibc.zip
+  unzip -oq -d /tmp/felix86_artifact/glibc /tmp/felix86_artifact/glibc/glibc.zip
+  rm /tmp/felix86_artifact/glibc/glibc.zip
+  sudo mv /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu/* "$INSTALLATION_DIR/lib/riscv64-linux-gnu/"
+  sudo mv /tmp/felix86_artifact/glibc/licenses/* "$INSTALLATION_DIR/licenses"
+  rmdir /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu
+  rmdir /tmp/felix86_artifact/glibc/lib
+  rmdir /tmp/felix86_artifact/glibc/licenses
+  rmdir /tmp/felix86_artifact/glibc
+fi
 
 sudo ln -sf "$FILE" /usr/bin/felix86
 sudo patchelf --set-interpreter "$INSTALLATION_DIR/lib/riscv64-linux-gnu/ld-linux-riscv64-lp64d.so.1" \
