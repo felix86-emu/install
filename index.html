@@ -190,8 +190,27 @@ sudo mkdir -p "$INSTALLATION_DIR/licenses"
 
 sudo mv /tmp/felix86_artifact/felix86 $FILE
 if [ -f "/tmp/felix86_artifact/felix86.png" ]; then
-  sudo mkdir -p "$INSTALLATION_DIR/icons"
-  sudo mv "/tmp/felix86_artifact/felix86.png" "$INSTALLATION_DIR/icons/felix86.png"
+  sudo mv "/tmp/felix86_artifact/felix86.png" "$INSTALLATION_DIR/felix86.png"
+fi
+if [ ! -f "/usr/share/icons/hicolor/128x128/apps/felix86.png" ]; then
+  echo "Installing icons..."
+  curl -fsSL -o /tmp/felix86_icons.zip https://cdn.felix86.com/images/icons.zip
+  TMP_DIR="$(mktemp -d /tmp/felix86_icons.XXXXXX)"
+  cleanup() {
+      rm -rf "$TMP_DIR"
+  }
+  trap cleanup EXIT
+  unzip -oq /tmp/felix86_icons.zip -d "$TMP_DIR"
+  rm /tmp/felix86_icons.zip
+  sudo install -Dm644 "$TMP_DIR/icons/16x16/felix86.png"   "/usr/share/icons/hicolor/16x16/apps/felix86.png"
+  sudo install -Dm644 "$TMP_DIR/icons/24x24/felix86.png"   "/usr/share/icons/hicolor/24x24/apps/felix86.png"
+  sudo install -Dm644 "$TMP_DIR/icons/32x32/felix86.png"   "/usr/share/icons/hicolor/32x32/apps/felix86.png"
+  sudo install -Dm644 "$TMP_DIR/icons/48x48/felix86.png"   "/usr/share/icons/hicolor/48x48/apps/felix86.png"
+  sudo install -Dm644 "$TMP_DIR/icons/96x96/felix86.png"   "/usr/share/icons/hicolor/96x96/apps/felix86.png"
+  sudo install -Dm644 "$TMP_DIR/icons/128x128/felix86.png" "/usr/share/icons/hicolor/128x128/apps/felix86.png"
+  if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor
+  fi
 fi
 sudo mv /tmp/felix86_artifact/lib/x86_64-linux-gnu/* "$INSTALLATION_DIR/lib/x86_64-linux-gnu/"
 
