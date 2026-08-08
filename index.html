@@ -223,7 +223,7 @@ if [ ! -f "$INSTALLATION_DIR/lib/riscv64-linux-gnu/libc.so.6" ]; then
   unzip -oq -d /tmp/felix86_artifact/glibc /tmp/felix86_artifact/glibc/glibc.zip
   rm /tmp/felix86_artifact/glibc/glibc.zip
   sudo mv /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu/* "$INSTALLATION_DIR/lib/riscv64-linux-gnu/"
-  sudo mv /tmp/felix86_artifact/glibc/licenses/* "$INSTALLATION_DIR/licenses"
+  sudo mv /tmp/felix86_artifact/glibc/licenses/COPYING.LESSERv2 "$INSTALLATION_DIR/licenses/glibc_LICENSE"
   rmdir /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu
   rmdir /tmp/felix86_artifact/glibc/lib
   rmdir /tmp/felix86_artifact/glibc/licenses
