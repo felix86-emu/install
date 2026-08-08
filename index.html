@@ -230,6 +230,19 @@ if [ ! -f "$INSTALLATION_DIR/lib/riscv64-linux-gnu/libc.so.6" ]; then
   rmdir /tmp/felix86_artifact/glibc
 fi
 
+# Old script would install in /usr/bin/felix86, check if its such a symlink and if it is remove it
+if [ -e "/usr/bin/felix86" ] || [ -L "/usr/bin/felix86" ]; then
+    if [ -L "/usr/bin/felix86" ]; then
+        if [ "$(readlink -f "/usr/bin/felix86")" = "$(readlink -f "$INSTALLATION_DIR/felix86")" ]; then
+            echo "/usr/bin/felix86 is a symlink to $INSTALLATION_DIR/felix86, leftover from older installation script, removing it"
+            sudo rm "/usr/bin/felix86"
+        fi
+    fi
+fi
+if [ -f "$INSTALLATION_DIR/felix86" ] && [ -x "$INSTALLATION_DIR/felix86" ]; then
+    echo "$INSTALLATION_DIR/felix86 exists, leftover from older installation script, removing it"
+    sudo rm "$INSTALLATION_DIR/felix86"
+fi
 sudo ln -sf "$FILE" /usr/local/bin/felix86
 sudo patchelf --set-interpreter "$INSTALLATION_DIR/lib/riscv64-linux-gnu/ld-linux-riscv64-lp64d.so.1" \
          --add-rpath "$INSTALLATION_DIR/lib/riscv64-linux-gnu" \
