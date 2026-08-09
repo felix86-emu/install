@@ -205,7 +205,7 @@ if [ ! -f "$HOME/.local/share/icons/hicolor/128x128/apps/felix86.png" ]; then
   rm /tmp/felix86_icons.zip
   for size in 16 24 32 48 96 128; do
     xdg-icon-resource install --context apps --size "$size" \
-      "$TMP_DIR/icons/${size}x${size}/felix86.png" felix86
+      "$TMP_DIR/icons/${size}x${size}/felix86.png" offtkp-felix86
   done
 fi
 sudo mv /tmp/felix86_artifact/lib/x86_64-linux-gnu/* "$INSTALLATION_DIR/lib/x86_64-linux-gnu/"
