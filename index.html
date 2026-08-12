@@ -2,19 +2,29 @@
 
 set -euo pipefail
 
+die() { echo "Error: $*" >&2; exit 1; }
+
 arch=$(uname -m)
 
 if [ "$(id -u)" -eq 0 ]; then
-    if ! whiptail --title "Warning" --yesno \
-      "This script is not meant to be run as root.\n\nIt will create a home directory inside the rootfs for your current user, and if that user is root, this might not be what you want.\n\nAre you sure you want to continue as root?" \
-      20 60; then
-        exit 1
+    if command -v whiptail >/dev/null 2>&1; then
+        if ! whiptail --title "Warning" --yesno \
+          "This script is not meant to be run as root.\n\nAre you sure you want to continue?" \
+          0 0; then
+            exit 1
+        fi
+    else
+        echo "Warning: This script is not meant to be run as root."
+        read -r -p "Are you sure you want to continue? [y/N] " reply
+        case "$reply" in
+            [Yy]|[Yy][Ee][Ss]) ;;
+            *) exit 1 ;;
+        esac
     fi
 fi
 
 if [ "$arch" != "riscv64" ]; then
-    echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
-    exit 1
+    die "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
 fi
 
 missing=()
@@ -23,20 +33,17 @@ for cmd in curl tar unzip sudo jq patchelf whiptail; do
 done
 
 if [ ${#missing[@]} -gt 0 ]; then
-    echo "Error: missing required tools: ${missing[*]}"
-    echo "  Ubuntu/Debian: sudo apt install ${missing[*]}"
-    echo "  Arch:          sudo pacman -S ${missing[*]}"
-    exit 1
+    die "missing required tools: ${missing[*]}
+  Ubuntu/Debian: sudo apt install ${missing[*]}
+  Arch:          sudo pacman -S ${missing[*]}"
 fi
 
 if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
-    echo "Error: \$HOME is not set or not a valid directory."
-    exit 1
+    die "\$HOME is not set or not a valid directory."
 fi
 
 if [ -z "$USER" ]; then
-    echo "\$USER is not set"
-    exit 1
+    die "\$USER is not set"
 fi
 
 INSTALLATION_DIR="/opt/felix86"
@@ -67,10 +74,7 @@ check_url() {
   local url="$1"
 
   if ! curl --output /dev/null --silent --head --fail "$url"; then
-    echo "URL is invalid or unreachable: $url"
-    exit 1
-  else
-    return 0
+    die "URL is invalid or unreachable: $url"
   fi
 }
 
@@ -118,11 +122,10 @@ select_release_url() {
   local choose_nightly_index=$(( ${#entries[@]} + 2 ))
   menu_items+=("${choose_nightly_index})" "Choose specific build")
 
-  local menu_height=$(( ${#entries[@]} + 4 ))
   local choice
   choice=$(whiptail --title "felix86 Installer" \
     --menu "Welcome to the felix86 installer!\n\nChoose the version you'd like to install:" \
-    20 55 $menu_height \
+    0 0 0 \
     "${menu_items[@]}" \
     --default-item "1)" \
     3>&1 1>&2 2>&3) || exit 1
@@ -138,8 +141,7 @@ select_release_url() {
     github_api_link="https://api.github.com/repos/OFFTKP/felix86/actions/artifacts?name=linux_artifact&per_page=100"
     github_api_response=$(curl -s -L -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$github_api_link" | jq '.artifacts[] | select(.workflow_run.head_branch == "master")')
     if [ -z "$github_api_response" ]; then
-      echo "No artifacts found on master branch"
-      exit 1
+      die "No artifacts found on master branch"
     fi
     artifacts_array=$(echo "$github_api_response" | jq -s '.')
     artifacts_length=$(echo "$artifacts_array" | jq 'length')
@@ -163,8 +165,7 @@ select_release_url() {
 
     selected_id=$(echo "$artifacts_array" | jq -r ".[$((selection-1))].workflow_run.id")
     if [ -z "$selected_id" ]; then
-      echo "Failed to get artifact id?"
-      exit 1
+      die "Failed to get artifact id"
     fi
     FELIX86_LINK=https://nightly.link/OFFTKP/felix86/actions/runs/$selected_id/linux_artifact.zip
   else
@@ -292,10 +293,9 @@ exit_code=$?
 
 # If everything went fine, felix86 should return 42
 if [ "$exit_code" -ne 42 ]; then
-    echo "felix86 failed to run a simple program -- may not have installed correctly?"
     echo "Running again with logging enabled:"
     felix86 "$NEW_ROOTFS/bin/bash" -c "exit 42"
-    exit 1
+    die "felix86 failed to run a simple program -- may not have installed correctly?"
 fi
 
 if [ "$IS_UPDATE" -eq 1 ]; then

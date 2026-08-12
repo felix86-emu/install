@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+die() { echo "Error: $*" >&2; exit 1; }
+
 INSTALLATION_DIR="/opt/felix86"
 
 felix86_version_gte() {
@@ -35,10 +37,7 @@ check_url() {
   local url="$1"
 
   if ! curl --output /dev/null --silent --head --fail "$url"; then
-    echo "URL is invalid or unreachable: $url"
-    exit 1
-  else
-    return 0
+    die "URL is invalid or unreachable: $url"
   fi
 }
 
@@ -52,23 +51,28 @@ copy_and_notify() {
   fi
 
   echo "Copying $src to $dst"
-  if ! sudo cp -rp "$src" "$dst"; then
-    echo "Error: failed to copy '$src' to '$dst'" >&2
-    exit 1
-  fi
+  sudo cp -rp "$src" "$dst" || die "failed to copy '$src' to '$dst'"
 }
 
 if [ "$(id -u)" -eq 0 ]; then
-    if ! whiptail --title "Warning" --yesno \
-      "This script is not meant to be run as root.\n\nIt will create a home directory inside the rootfs for your current user, and if that user is root, this might not be what you want.\n\nAre you sure you want to continue as root?" \
-      20 60; then
-        exit 1
+    if command -v whiptail >/dev/null 2>&1; then
+        if ! whiptail --title "Warning" --yesno \
+          "This script is not meant to be run as root.\n\nAre you sure you want to continue?" \
+          0 0; then
+            exit 1
+        fi
+    else
+        echo "Warning: This script is not meant to be run as root."
+        read -r -p "Are you sure you want to continue? [y/N] " reply
+        case "$reply" in
+            [Yy]|[Yy][Ee][Ss]) ;;
+            *) exit 1 ;;
+        esac
     fi
 fi
 
 if [ "$arch" != "riscv64" ]; then
-    echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
-    exit 1
+    die "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
 fi
 
 missing=()
@@ -77,20 +81,17 @@ for cmd in curl tar unzip sudo jq whiptail; do
 done
 
 if [ ${#missing[@]} -gt 0 ]; then
-    echo "Error: missing required tools: ${missing[*]}"
-    echo "  Ubuntu/Debian: sudo apt install ${missing[*]}"
-    echo "  Arch:          sudo pacman -S ${missing[*]}"
-    exit 1
+    die "missing required tools: ${missing[*]}
+  Ubuntu/Debian: sudo apt install ${missing[*]}
+  Arch:          sudo pacman -S ${missing[*]}"
 fi
 
 if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
-    echo "Error: \$HOME is not set or not a valid directory."
-    exit 1
+    die "\$HOME is not set or not a valid directory."
 fi
 
 if [ -z "$USER" ]; then
-    echo "\$USER is not set"
-    exit 1
+    die "\$USER is not set"
 fi
 
 check_url "https://cdn.felix86.com/rootfs/meta.json"
@@ -159,17 +160,15 @@ else
     NEW_ROOTFS=$(whiptail --title "Installation path" --inputbox \
       "Installation path for $selected:" \
       10 60 "$INSTALLATION_DIR/rootfs" 3>&1 1>&2 2>&3) || exit 1
-    NEW_ROOTFS=$(eval echo "$NEW_ROOTFS")
     NEW_ROOTFS=$(realpath "$NEW_ROOTFS")
     if [[ -z "$NEW_ROOTFS" || "$NEW_ROOTFS" == "/" ]]; then
-        echo "Error: Rootfs is set to host root" >&2
-        exit 1
+        die "Rootfs is set to host root"
     fi
     if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
         check_url $selected_url
         echo "Installing rootfs to $NEW_ROOTFS"
         sudo mkdir -p "$NEW_ROOTFS"
-        if ! sudo -u nobody sh -c "test -r '$NEW_ROOTFS'"; then
+        if ! sudo -u nobody test -r "$NEW_ROOTFS"; then
             if ! whiptail --title "Warning" --yesno \
               "Different users cannot access this rootfs path. This may lead to problems with programs that try to switch to a different user.\n\nIt is not recommended to install the rootfs in paths not accessible by all users, such as the home directory.\n\nAre you sure you want to install the rootfs at $NEW_ROOTFS?" \
               14 60; then
@@ -193,25 +192,10 @@ else
         echo "Copying important files to rootfs..."
         mkdir -p "$NEW_ROOTFS/var/lib"
         mkdir -p "$NEW_ROOTFS/etc"
-        copy_and_notify "/etc/mtab" "$NEW_ROOTFS/etc/mtab"
-        copy_and_notify "/etc/passwd" "$NEW_ROOTFS/etc/passwd"
-        copy_and_notify "/etc/passwd-" "$NEW_ROOTFS/etc/passwd-"
-        copy_and_notify "/etc/group" "$NEW_ROOTFS/etc/group"
-        copy_and_notify "/etc/group-" "$NEW_ROOTFS/etc/group-"
-        copy_and_notify "/etc/shadow" "$NEW_ROOTFS/etc/shadow"
-        copy_and_notify "/etc/shadow-" "$NEW_ROOTFS/etc/shadow-"
-        copy_and_notify "/etc/gshadow" "$NEW_ROOTFS/etc/gshadow"
-        copy_and_notify "/etc/gshadow-" "$NEW_ROOTFS/etc/gshadow-"
-        copy_and_notify "/etc/hosts" "$NEW_ROOTFS/etc/hosts"
-        copy_and_notify "/etc/hostname" "$NEW_ROOTFS/etc/hostname"
-        copy_and_notify "/etc/timezone" "$NEW_ROOTFS/etc/timezone"
-        copy_and_notify "/etc/localtime" "$NEW_ROOTFS/etc/localtime"
-        copy_and_notify "/etc/fstab" "$NEW_ROOTFS/etc/fstab"
-        copy_and_notify "/etc/subuid" "$NEW_ROOTFS/etc/subuid"
-        copy_and_notify "/etc/subgid" "$NEW_ROOTFS/etc/subgid"
-        copy_and_notify "/etc/machine-id" "$NEW_ROOTFS/etc/machine-id"
-        copy_and_notify "/etc/resolv.conf" "$NEW_ROOTFS/etc/resolv.conf"
-        copy_and_notify "/etc/sudoers" "$NEW_ROOTFS/etc/sudoers"
+        for f in mtab passwd passwd- group group- shadow shadow- gshadow gshadow- \
+                 hosts hostname timezone localtime fstab subuid subgid machine-id resolv.conf sudoers; do
+            copy_and_notify "/etc/$f" "$NEW_ROOTFS/etc/$f"
+        done
         echo "Done!"
         if ! set_rootfs "$NEW_ROOTFS"; then
             echo "Failed to set rootfs to $NEW_ROOTFS"
@@ -222,7 +206,6 @@ else
             fi
         fi
     else
-        echo "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"
-        exit 1
+        die "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"
     fi
 fi
