@@ -30,6 +30,16 @@ if [ ${#missing[@]} -gt 0 ]; then
     exit 1
 fi
 
+if [ -e "$INSTALLATION_DIR/lib/riscv64-linux-gnu/mangohud" ]; then
+    echo "Error: MangoHud is already installed: $INSTALLATION_DIR/lib/riscv64-linux-gnu/mangohud exists."
+    exit 1
+fi
+
+if [ -e "$INSTALLATION_DIR/bin/mangohud" ]; then
+    echo "Error: MangoHud is already installed: $INSTALLATION_DIR/bin/mangohud exists."
+    exit 1
+fi
+
 echo "Installing felix86 MangoHud fork, built from https://github.com/felix86-emu/MangoHud"
 curl -fsSL -o /tmp/felix86_mangohud.tar.gz https://cdn.felix86.com/misc/mangohud/felix86-MangoHud.tar.gz
 TMP_DIR="$(mktemp -d /tmp/felix86_mangohud.XXXXXX)"
