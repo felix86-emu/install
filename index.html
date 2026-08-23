@@ -216,7 +216,7 @@ sudo mv /tmp/felix86_artifact/lib/x86_64-linux-gnu/* "$INSTALLATION_DIR/lib/x86_
 if [ ! -f "$INSTALLATION_DIR/lib/riscv64-linux-gnu/libc.so.6" ]; then
   echo "Downloading custom glibc fork..."
   mkdir -p /tmp/felix86_artifact/glibc
-  FELIX86_GLIBC_LINK="https://github.com/felix86-emu/glibc/releases/download/2.4.3-felix86/glibc-felix86.zip"
+  FELIX86_GLIBC_LINK="https://github.com/felix86-emu/glibc/releases/download/2.4.3-felix86-1/glibc-felix86.zip"
   curl -fSL --progress-bar "$FELIX86_GLIBC_LINK" -o /tmp/felix86_artifact/glibc/glibc.zip
   unzip -oq -d /tmp/felix86_artifact/glibc /tmp/felix86_artifact/glibc/glibc.zip
   rm /tmp/felix86_artifact/glibc/glibc.zip
