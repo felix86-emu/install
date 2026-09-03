@@ -4,6 +4,11 @@ set -euo pipefail
 
 die() { echo "Error: $*" >&2; exit 1; }
 
+if [ ! -t 0 ] || [ ! -t 1 ]; then
+    die "This installer is interactive and needs a terminal.
+  Run as: bash <(curl -fsSL https://install.felix86.com)"
+fi
+
 arch=$(uname -m)
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -78,6 +83,24 @@ check_url() {
   fi
 }
 
+GITHUB_ARTIFACTS_JSON="[]"
+
+fetch_nightly_artifacts() {
+  local api="https://api.github.com/repos/OFFTKP/felix86/actions/artifacts?name=linux_artifact&per_page=100"
+  local json
+  json=$(curl -sfL --max-time 20 \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" "$api" 2>/dev/null \
+    | jq -c '[.artifacts[] | select(.workflow_run.head_branch == "master" and .expired == false)] | sort_by(.created_at) | reverse' 2>/dev/null) || json=""
+  if [[ -n "$json" && "$json" != "null" ]]; then
+    GITHUB_ARTIFACTS_JSON="$json"
+  fi
+}
+
+nightly_run_link() {
+  echo "https://nightly.link/OFFTKP/felix86/actions/runs/$1/linux_artifact.zip"
+}
+
 select_release_url() {
   local url_list
   check_url "https://cdn.felix86.com/releases/meta.txt"
@@ -104,6 +127,11 @@ select_release_url() {
     echo "No valid entries found."
     return 1
   fi
+
+  echo "Fetching list of artifacts from GitHub..."
+  fetch_nightly_artifacts
+  local nightly_count
+  nightly_count=$(echo "$GITHUB_ARTIFACTS_JSON" | jq 'length')
 
   local menu_items=()
   for i in "${!entries[@]}"; do
@@ -132,29 +160,29 @@ select_release_url() {
   choice="${choice%)}"
 
   if (( choice == latest_index )); then
-    echo "Fetching latest artifact link..."
     ver="latest"
-    nightly="https://nightly.link/OFFTKP/felix86/workflows/build/master"
-    FELIX86_LINK="$nightly/linux_artifact.zip"
-  elif (( choice == choose_nightly_index )); then
-    echo "Fetching latest artifacts..."
-    github_api_link="https://api.github.com/repos/OFFTKP/felix86/actions/artifacts?name=linux_artifact&per_page=100"
-    github_api_response=$(curl -s -L -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$github_api_link" | jq '.artifacts[] | select(.workflow_run.head_branch == "master")')
-    if [ -z "$github_api_response" ]; then
-      die "No artifacts found on master branch"
+    if (( nightly_count == 0 )); then
+      die "Could not fetch list of artifacts from GitHub"
     fi
-    artifacts_array=$(echo "$github_api_response" | jq -s '.')
-    artifacts_length=$(echo "$artifacts_array" | jq 'length')
+    local run_id
+    run_id=$(echo "$GITHUB_ARTIFACTS_JSON" | jq -r '.[0].workflow_run.id')
+    if [[ -z "$run_id" || "$run_id" == "null" ]]; then
+      die "Failed to get latest nightly build"
+    fi
+    FELIX86_LINK=$(nightly_run_link "$run_id")
+  elif (( choice == choose_nightly_index )); then
+    if (( nightly_count == 0 )); then
+      die "Could not fetch the list of nightly builds from GitHub"
+    fi
 
     local artifact_menu=()
-    for i in $(seq 0 $((artifacts_length - 1))); do
-      local sha=$(echo "$artifacts_array" | jq -r ".[$i].workflow_run.head_sha[0:7]")
-      local date=$(echo "$artifacts_array" | jq -r ".[$i].created_at | strptime(\"%Y-%m-%dT%H:%M:%SZ\") | strftime(\"%Y-%m-%d %H:%M\")")
-      local num=$((i+1))
+    local sha date
+    while IFS=$'\t' read -r sha date; do
+      local num=$(( ${#artifact_menu[@]} / 2 + 1 ))
       artifact_menu+=("${num})" "commit $sha  ($date)")
-    done
+    done < <(echo "$GITHUB_ARTIFACTS_JSON" | jq -r '.[] | "\(.workflow_run.head_sha[0:7])\t\(.created_at | strptime("%Y-%m-%dT%H:%M:%SZ") | strftime("%Y-%m-%d %H:%M"))"')
 
-    local artifact_menu_height=$((artifacts_length > 10 ? 10 : artifacts_length))
+    local artifact_menu_height=$((nightly_count > 10 ? 10 : nightly_count))
     local selection
     selection=$(whiptail --title "felix86 Installer" \
       --menu "Choose a specific nightly build:" \
@@ -163,11 +191,13 @@ select_release_url() {
       3>&1 1>&2 2>&3) || exit 1
     selection="${selection%)}"
 
-    selected_id=$(echo "$artifacts_array" | jq -r ".[$((selection-1))].workflow_run.id")
-    if [ -z "$selected_id" ]; then
-      die "Failed to get artifact id"
+    ver="nightly"
+    local run_id
+    run_id=$(echo "$GITHUB_ARTIFACTS_JSON" | jq -r ".[$((selection-1))].workflow_run.id")
+    if [[ -z "$run_id" || "$run_id" == "null" ]]; then
+      die "Failed to get run id for latest build"
     fi
-    FELIX86_LINK=https://nightly.link/OFFTKP/felix86/actions/runs/$selected_id/linux_artifact.zip
+    FELIX86_LINK=$(nightly_run_link "$run_id")
   else
     ver=${entries[$((choice-1))]}
     selected="https://github.com/OFFTKP/felix86/releases/download/$ver/felix86.$ver.zip"
@@ -179,7 +209,7 @@ select_release_url
 
 echo "Downloading felix86 from $FELIX86_LINK ..."
 mkdir -p /tmp/felix86_artifact
-curl -L --progress-bar "$FELIX86_LINK" -o /tmp/felix86_artifact/archive.zip
+curl -fL --progress-bar "$FELIX86_LINK" -o /tmp/felix86_artifact/archive.zip
 unzip -oq -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
 echo "Moving felix86 executable to $FILE, requesting permission..."
@@ -213,15 +243,30 @@ elif [ ! -f "$HOME/.local/share/icons/hicolor/128x128/apps/offtkp-felix86.png" ]
 fi
 sudo mv /tmp/felix86_artifact/lib/x86_64-linux-gnu/* "$INSTALLATION_DIR/lib/x86_64-linux-gnu/"
 
-if [ ! -f "$INSTALLATION_DIR/lib/riscv64-linux-gnu/libc.so.6" ]; then
-  echo "Downloading custom glibc fork..."
+FELIX86_GLIBC_VERSION_FILE="$INSTALLATION_DIR/lib/riscv64-linux-gnu/.felix86-glibc-version"
+INSTALLED_GLIBC_VERSION=""
+if [ -f "$FELIX86_GLIBC_VERSION_FILE" ]; then
+  INSTALLED_GLIBC_VERSION=$(cat "$FELIX86_GLIBC_VERSION_FILE")
+fi
+
+FELIX86_GLIBC_VERSION=$(curl -sfL --max-time 20 \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  "https://api.github.com/repos/felix86-emu/glibc/releases/latest" 2>/dev/null \
+  | jq -r '.tag_name // empty' 2>/dev/null) || FELIX86_GLIBC_VERSION=""
+
+if [ -z "$FELIX86_GLIBC_VERSION" ]; then
+    echo "Could not fetch latest glibc release version, skipping custom glibc installation"
+elif [ ! -f "$INSTALLATION_DIR/lib/riscv64-linux-gnu/libc.so.6" ] || [ "$INSTALLED_GLIBC_VERSION" != "$FELIX86_GLIBC_VERSION" ]; then
+  echo "Downloading custom glibc fork ($FELIX86_GLIBC_VERSION)..."
   mkdir -p /tmp/felix86_artifact/glibc
-  FELIX86_GLIBC_LINK="https://github.com/felix86-emu/glibc/releases/download/2.4.3-felix86-1/glibc-felix86.zip"
+  FELIX86_GLIBC_LINK="https://github.com/felix86-emu/glibc/releases/download/$FELIX86_GLIBC_VERSION/glibc-felix86.zip"
   curl -fSL --progress-bar "$FELIX86_GLIBC_LINK" -o /tmp/felix86_artifact/glibc/glibc.zip
   unzip -oq -d /tmp/felix86_artifact/glibc /tmp/felix86_artifact/glibc/glibc.zip
   rm /tmp/felix86_artifact/glibc/glibc.zip
-  sudo mv /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu/* "$INSTALLATION_DIR/lib/riscv64-linux-gnu/"
-  sudo mv /tmp/felix86_artifact/glibc/licenses/COPYING.LESSERv2 "$INSTALLATION_DIR/licenses/glibc_LICENSE"
+  sudo mv -f /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu/* "$INSTALLATION_DIR/lib/riscv64-linux-gnu/"
+  sudo mv -f /tmp/felix86_artifact/glibc/licenses/COPYING.LESSERv2 "$INSTALLATION_DIR/licenses/glibc_LICENSE"
+  echo "$FELIX86_GLIBC_VERSION" | sudo tee "$FELIX86_GLIBC_VERSION_FILE" >/dev/null
   rmdir /tmp/felix86_artifact/glibc/lib/riscv64-linux-gnu
   rmdir /tmp/felix86_artifact/glibc/lib
   rmdir /tmp/felix86_artifact/glibc/licenses
@@ -243,9 +288,14 @@ if [ -f "$INSTALLATION_DIR/felix86" ] && [ -x "$INSTALLATION_DIR/felix86" ]; the
     sudo rm "$INSTALLATION_DIR/felix86"
 fi
 sudo ln -sf "$FILE" /usr/local/bin/felix86
-sudo patchelf --set-interpreter "$INSTALLATION_DIR/lib/riscv64-linux-gnu/ld-linux-riscv64-lp64d.so.1" \
-         --add-rpath "$INSTALLATION_DIR/lib/riscv64-linux-gnu" \
-         "$FILE"
+FELIX86_LD="$INSTALLATION_DIR/lib/riscv64-linux-gnu/ld-linux-riscv64-lp64d.so.1"
+if [ -f "$FELIX86_LD" ] && [ -f "$INSTALLATION_DIR/lib/riscv64-linux-gnu/libc.so.6" ]; then
+  sudo patchelf --set-interpreter "$FELIX86_LD" \
+           --add-rpath "$INSTALLATION_DIR/lib/riscv64-linux-gnu" \
+           "$FILE"
+else
+  echo "Custom glibc not found in $INSTALLATION_DIR/lib/riscv64-linux-gnu, using the system glibc"
+fi
 sudo chown 0:0 "$FILE"
 sudo chmod +x "$FILE"
 sudo chown -R 0:0 "$INSTALLATION_DIR/lib"
@@ -326,6 +376,8 @@ if ! felix86 -d; then
   echo "  /run/binfmt.d"
   echo "  /usr/local/lib/binfmt.d"
   echo "  /usr/lib/binfmt.d"
-  echo "After you're done, to register felix86, run: sudo --preserve-env=HOME $FILE -b"
+  echo "After you're done, to register felix86, run: sudo $FILE -b"
   echo "If you don't register to binfmt_misc, some apps like sudo (needed by AppImages) will not work"
 fi
+
+echo "Refer to the usage guide for more info: https://felix86.com/docs/users/usage-guide/"

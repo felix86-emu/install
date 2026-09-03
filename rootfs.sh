@@ -176,7 +176,7 @@ else
             fi
         fi
         echo "Downloading $selected..."
-        curl -L --progress-bar $selected_url | sudo tar --same-owner -xzf - -C "$NEW_ROOTFS"
+        curl -fL --progress-bar "$selected_url" | sudo tar --same-owner -xzf - -C "$NEW_ROOTFS"
         sudo chown 0:0 "$NEW_ROOTFS"
         sudo mkdir "$NEW_ROOTFS/home"
         CURRENT_USER=$(whoami)
