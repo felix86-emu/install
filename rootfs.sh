@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+main() {
 die() { echo "Error: $*" >&2; exit 1; }
 
 INSTALLATION_DIR="/opt/felix86"
@@ -209,3 +210,6 @@ else
         die "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"
     fi
 fi
+}
+
+main "$@"

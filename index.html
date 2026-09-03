@@ -2,12 +2,8 @@
 
 set -euo pipefail
 
+main() {
 die() { echo "Error: $*" >&2; exit 1; }
-
-if [ ! -t 0 ] || [ ! -t 1 ]; then
-    die "This installer is interactive and needs a terminal.
-  Run as: bash <(curl -fsSL https://install.felix86.com)"
-fi
 
 arch=$(uname -m)
 
@@ -381,3 +377,6 @@ if ! felix86 -d; then
 fi
 
 echo "Refer to the usage guide for more info: https://felix86.com/docs/users/usage-guide/"
+}
+
+main "$@"
