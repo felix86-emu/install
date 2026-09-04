@@ -4,6 +4,14 @@ set -euo pipefail
 
 main() {
 die() { echo "Error: $*" >&2; exit 1; }
+file_sha256() {
+    if command -v openssl >/dev/null 2>&1; then
+        # Currently makes use of sha256 extensions, so it is a lot faster on e.g. Bianbu
+        openssl sha256 -r "$1" | cut -d' ' -f1
+    else
+        sha256sum "$1" | cut -d' ' -f1
+    fi
+}
 
 INSTALLATION_DIR="/opt/felix86"
 
@@ -46,7 +54,7 @@ verify_sha256() {
   local file="$1"
   local expected="${2#sha256:}"
   local actual
-  actual=$(sha256sum "$file" | cut -d' ' -f1)
+  actual=$(file_sha256 "$file")
   if [[ "$actual" != "$expected" ]]; then
     die "checksum mismatch for $file
   expected: $expected
