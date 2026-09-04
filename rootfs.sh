@@ -42,6 +42,19 @@ check_url() {
   fi
 }
 
+verify_sha256() {
+  local file="$1"
+  local expected="${2#sha256:}"
+  local actual
+  actual=$(sha256sum "$file" | cut -d' ' -f1)
+  if [[ "$actual" != "$expected" ]]; then
+    die "checksum mismatch for $file
+  expected: $expected
+  actual:   $actual"
+  fi
+  echo "Checksum OK: $actual"
+}
+
 copy_and_notify() {
   local src="$1"
   local dst="$2"
@@ -77,7 +90,7 @@ if [ "$arch" != "riscv64" ]; then
 fi
 
 missing=()
-for cmd in curl tar unzip sudo jq whiptail; do
+for cmd in curl tar unzip sudo jq whiptail sha256sum; do
     command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
 done
 
@@ -158,6 +171,7 @@ if [[ "$choice" == "$custom_index" ]]; then
 else
     selected="${names[choice-1]}"
     selected_url=$(jq -r --arg n "$selected" '.[$n].url' <<< "$json")
+    selected_sha256=$(jq -r --arg n "$selected" '.[$n].sha256 // empty' <<< "$json")
     NEW_ROOTFS=$(whiptail --title "Installation path" --inputbox \
       "Installation path for $selected:" \
       10 60 "$INSTALLATION_DIR/rootfs" 3>&1 1>&2 2>&3) || exit 1
@@ -177,7 +191,21 @@ else
             fi
         fi
         echo "Downloading $selected..."
-        curl -fL --progress-bar "$selected_url" | sudo tar --same-owner -xzf - -C "$NEW_ROOTFS"
+        if [[ -z "$selected_sha256" ]]; then
+            die "No checksum listed for $selected, refusing to download"
+        fi
+        ROOTFS_ARCHIVE="$NEW_ROOTFS/.felix86-rootfs-download.tar.gz"
+        cleanup_archive() {
+            sudo rm -f "$ROOTFS_ARCHIVE"
+        }
+        trap cleanup_archive EXIT
+        sudo chown "$(id -u):$(id -g)" "$NEW_ROOTFS"
+        curl -fL --progress-bar "$selected_url" -o "$ROOTFS_ARCHIVE"
+        echo "Verifying checksum of $selected..."
+        verify_sha256 "$ROOTFS_ARCHIVE" "$selected_sha256"
+        echo "Extracting $selected..."
+        sudo tar --same-owner -xzf "$ROOTFS_ARCHIVE" -C "$NEW_ROOTFS"
+        cleanup_archive
         sudo chown 0:0 "$NEW_ROOTFS"
         sudo mkdir "$NEW_ROOTFS/home"
         CURRENT_USER=$(whoami)

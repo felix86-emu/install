@@ -29,7 +29,7 @@ if [ "$arch" != "riscv64" ]; then
 fi
 
 missing=()
-for cmd in curl tar unzip sudo jq patchelf whiptail; do
+for cmd in curl tar unzip sudo jq patchelf whiptail sha256sum; do
     command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
 done
 
@@ -49,6 +49,7 @@ fi
 
 INSTALLATION_DIR="/opt/felix86"
 FILE="$INSTALLATION_DIR/bin/felix86"
+ICONS_SHA256="665a264e462b2ddd07f478b83cf34219497def4a1d8cab4cab04d56c0864d847"
 
 IS_UPDATE=0
 if [ -x "$FILE" ]; then
@@ -225,17 +226,23 @@ if ! command -v xdg-icon-resource >/dev/null 2>&1; then
 elif [ ! -f "$HOME/.local/share/icons/hicolor/128x128/apps/offtkp-felix86.png" ]; then
   echo "Installing icons..."
   curl -fsSL -o /tmp/felix86_icons.zip https://cdn.felix86.com/images/icons.zip
-  TMP_DIR="$(mktemp -d /tmp/felix86_icons.XXXXXX)"
-  cleanup() {
-    rm -rf "$TMP_DIR"
-  }
-  trap cleanup EXIT
-  unzip -oq /tmp/felix86_icons.zip -d "$TMP_DIR"
-  rm /tmp/felix86_icons.zip
-  for size in 16 24 32 48 96 128; do
-    xdg-icon-resource install --context apps --size "$size" \
-      "$TMP_DIR/icons/${size}x${size}/felix86.png" offtkp-felix86
-  done
+  ICONS_ACTUAL_SHA256=$(sha256sum /tmp/felix86_icons.zip | cut -d' ' -f1)
+  if [[ "$ICONS_ACTUAL_SHA256" != "$ICONS_SHA256" ]]; then
+    rm -f /tmp/felix86_icons.zip
+    echo "Checksum mismatch for icons.zip (expected $ICONS_SHA256, got $ICONS_ACTUAL_SHA256), skipping icon installation"
+  else
+    TMP_DIR="$(mktemp -d /tmp/felix86_icons.XXXXXX)"
+    cleanup() {
+      rm -rf "$TMP_DIR"
+    }
+    trap cleanup EXIT
+    unzip -oq /tmp/felix86_icons.zip -d "$TMP_DIR"
+    rm /tmp/felix86_icons.zip
+    for size in 16 24 32 48 96 128; do
+      xdg-icon-resource install --context apps --size "$size" \
+        "$TMP_DIR/icons/${size}x${size}/felix86.png" offtkp-felix86
+    done
+  fi
 fi
 sudo mv /tmp/felix86_artifact/lib/x86_64-linux-gnu/* "$INSTALLATION_DIR/lib/x86_64-linux-gnu/"
 
