@@ -1,0 +1,26 @@
+{
+  "Ubuntu 26.04": {
+    "url": "https://cdn.felix86.com/rootfs/Ubuntu-26.04.tar.gz",
+    "size": "3.4 GiB",
+    "distro": "ubuntu",
+    "version": "26.04",
+    "recommended": true,
+    "sha256": "738cae2e17c1b68e27e01a5ba9c88bf82d2a85164a4a1bb8810d60d0113fd188"
+  },
+  "Ubuntu 24.04": {
+    "url": "https://cdn.felix86.com/rootfs/Ubuntu-24.04.tar.gz",
+    "size": "3.2 GiB",
+    "distro": "ubuntu",
+    "version": "24.04",
+    "recommended": false,
+    "sha256": "b805287f416d3c87ded23af5f1976116cf0d35ebbb6da4488ab3030b4716f6fc"
+  },
+  "Ubuntu 24.04 Tiny": {
+    "url": "https://cdn.felix86.com/rootfs/Ubuntu-24.04-Tiny.tar.gz",
+    "size": "182 MiB",
+    "distro": "ubuntu",
+    "version": "24.04",
+    "recommended": false,
+    "sha256": "459e5c7ddbbf57ba251c4ecab08361f7a59dfd1653a3a8d231f8f36c5a6c82e1"
+  }
+}
