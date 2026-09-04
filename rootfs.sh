@@ -108,8 +108,9 @@ if [ -z "$USER" ]; then
     die "\$USER is not set"
 fi
 
-check_url "https://cdn.felix86.com/rootfs/meta.json"
-json=$(curl -s https://cdn.felix86.com/rootfs/meta.json)
+META_URL="https://raw.githubusercontent.com/felix86-emu/install/refs/heads/main/meta.json"
+check_url "$META_URL"
+json=$(curl -fsSL $META_URL)
 mapfile -t names < <(jq -r 'to_entries[].key' <<< "$json")
 default_index=$(jq -r 'to_entries | map(.value.recommended) | index(true)' <<< "$json")
 
