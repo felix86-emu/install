@@ -31,6 +31,98 @@ Performance.unsafe_flags = false
 Performance.always_tso = true
 Performance.unsafe_flags = false
 
-["EACefSubprocess.exe"]
+["EACefSubProcess.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EASteamLauncher.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EASteamAuthHelper.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EACoreServer.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EALauncher.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EAUpdater.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EADestager.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EAGEP.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EAConnect_microsoft.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EAEgsProxy.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EASteamProxy.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EAProxyInstaller.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EACrashReporter.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["ErrorReporter.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["MessageDlg.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["PatchProgress.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["Login.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["GetGameToken.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["OriginLegacyCLI.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["OriginLegacyCompatibility.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["IGOProxy32.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["PolicyProxy32.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["PolicyProxy64.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EAUninstall.exe"]
 Performance.always_tso = true
 Performance.unsafe_flags = false
