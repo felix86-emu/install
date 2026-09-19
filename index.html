@@ -358,6 +358,12 @@ if [ "$exit_code" -ne 42 ]; then
     die "felix86 failed to run a simple program -- may not have installed correctly?"
 fi
 
+PROFILES_URL="https://raw.githubusercontent.com/felix86-emu/install/refs/heads/main/profiles.toml"
+PROFILES_DIR="$HOME/.config/felix86/profiles/executables"
+mkdir -p "$PROFILES_DIR"
+check_url "$PROFILES_URL"
+curl -fsSL "$PROFILES_URL" -o "$PROFILES_DIR/00-installation-profiles.toml" 
+
 if [ "$IS_UPDATE" -eq 1 ]; then
   echo "felix86 successfully updated."
 else
