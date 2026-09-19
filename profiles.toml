@@ -15,6 +15,14 @@ Performance.unsafe_flags = false
 Performance.always_tso = true
 Performance.unsafe_flags = false
 
+["Link2EA.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["EALaunchHelper.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
 ["EALocalHostSvc.exe"]
 Performance.always_tso = true
 Performance.unsafe_flags = false
