@@ -126,3 +126,11 @@ Performance.unsafe_flags = false
 ["EAUninstall.exe"]
 Performance.always_tso = true
 Performance.unsafe_flags = false
+
+["msiexec.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
+
+["rundll32.exe"]
+Performance.always_tso = true
+Performance.unsafe_flags = false
