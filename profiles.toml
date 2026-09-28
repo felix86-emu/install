@@ -134,3 +134,6 @@ Performance.unsafe_flags = false
 ["rundll32.exe"]
 Performance.always_tso = true
 Performance.unsafe_flags = false
+
+["idTechLauncher.exe"]
+Performance.always_tso = true
