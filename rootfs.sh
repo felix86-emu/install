@@ -73,7 +73,7 @@ copy_and_notify() {
   fi
 
   echo "Copying $src to $dst"
-  sudo cp -rp "$src" "$dst" || die "failed to copy '$src' to '$dst'"
+  sudo cp -rp --remove-destination "$src" "$dst" || die "failed to copy '$src' to '$dst'"
 }
 
 if [ "$(id -u)" -eq 0 ]; then
